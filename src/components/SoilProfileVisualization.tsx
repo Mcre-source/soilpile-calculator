@@ -46,19 +46,50 @@ const SoilProfileVisualization = ({
     const width = canvas.width;
     const height = canvas.height;
     const margin = 20;
-    const scaleFactor = (height - 2 * margin) / Math.max(maxDepth, pileLength);
+    
+    // Adjust for water above ground
+    const aboveGroundMargin = waterTableDepth < 0 ? Math.min(Math.abs(waterTableDepth) * 10, 50) : 0;
+    const totalHeight = height - 2 * margin - aboveGroundMargin;
+    const groundLevel = margin + aboveGroundMargin;
+    const scaleFactor = totalHeight / Math.max(maxDepth, pileLength);
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
     // Draw background (sky)
     ctx.fillStyle = '#f0f9ff';
-    ctx.fillRect(0, 0, width, margin);
+    ctx.fillRect(0, 0, width, groundLevel);
+    
+    // Draw water above ground if applicable
+    if (waterTableDepth < 0) {
+      const waterHeight = aboveGroundMargin;
+      ctx.fillStyle = 'rgba(135, 206, 250, 0.5)'; // Light blue with transparency
+      ctx.fillRect(0, margin, width, waterHeight);
+      
+      // Draw water surface pattern
+      ctx.strokeStyle = 'rgba(70, 130, 180, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      
+      for (let x = 0; x < width; x += 10) {
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x + 5, margin + 3);
+        ctx.lineTo(x + 10, margin);
+      }
+      
+      ctx.stroke();
+      
+      // Draw water level label
+      ctx.fillStyle = '#228be6';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('WATER LEVEL', 5, margin + waterHeight / 2);
+    }
     
     // Draw soil layers
     let currentDepth = 0;
     soilLayers.forEach(layer => {
-      const yTop = margin + currentDepth * scaleFactor;
+      const yTop = groundLevel + currentDepth * scaleFactor;
       const layerHeight = layer.thickness * scaleFactor;
       
       // Draw soil layer
@@ -92,11 +123,25 @@ const SoilProfileVisualization = ({
     ctx.fillStyle = '#333';
     ctx.font = '10px Arial';
     ctx.textAlign = 'right';
-    ctx.fillText(`${currentDepth.toFixed(1)}m`, width - 5, margin + currentDepth * scaleFactor + 10);
+    ctx.fillText(`${currentDepth.toFixed(1)}m`, width - 5, groundLevel + currentDepth * scaleFactor + 10);
     
-    // Draw water table
+    // Draw ground level line
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundLevel);
+    ctx.lineTo(width, groundLevel);
+    ctx.stroke();
+    
+    // Draw "GROUND LEVEL" label
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('GROUND LEVEL', 5, groundLevel - 5);
+    
+    // Draw water table if below ground
     if (waterTableDepth > 0 && waterTableDepth < maxDepth) {
-      const waterY = margin + waterTableDepth * scaleFactor;
+      const waterY = groundLevel + waterTableDepth * scaleFactor;
       
       // Draw water table line
       ctx.strokeStyle = '#4dabf7';
@@ -118,8 +163,8 @@ const SoilProfileVisualization = ({
     // Draw pile
     const pileWidth = Math.max(30, pileDiameter * 100);
     const pileX = width / 2 - pileWidth / 2;
-    const pileY = margin;
-    const pileYEnd = margin + pileLength * scaleFactor;
+    const pileY = groundLevel;
+    const pileYEnd = groundLevel + pileLength * scaleFactor;
     
     // Pile shaft
     ctx.fillStyle = pileProperties.material === 'concrete' ? '#d3d3d3' : 
@@ -143,9 +188,35 @@ const SoilProfileVisualization = ({
     ctx.textAlign = 'center';
     ctx.fillText(`L = ${pileLength.toFixed(2)}m`, width / 2, (pileY + pileYEnd) / 2);
     
-    // Draw force arrow if applicable
+    // Draw force arrow for lateral load
     if (forceHeight > 0) {
-      const arrowY = margin - forceHeight * scaleFactor;
+      const arrowY = groundLevel - forceHeight * scaleFactor;
+      
+      // Arrow line
+      ctx.strokeStyle = '#e03131';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(width / 4, groundLevel - forceHeight * scaleFactor);
+      ctx.lineTo(pileX, groundLevel - forceHeight * scaleFactor);
+      ctx.stroke();
+      
+      // Arrow head
+      ctx.fillStyle = '#e03131';
+      ctx.beginPath();
+      ctx.moveTo(pileX, arrowY);
+      ctx.lineTo(pileX - 10, arrowY - 5);
+      ctx.lineTo(pileX - 10, arrowY + 5);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Force label
+      ctx.fillStyle = '#e03131';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`LATERAL LOAD AT h = ${forceHeight.toFixed(1)}m`, width / 4 - 120, arrowY - 5);
+    } else {
+      // Draw lateral load at ground level
+      const arrowY = groundLevel;
       
       // Arrow line
       ctx.strokeStyle = '#e03131';
@@ -168,7 +239,7 @@ const SoilProfileVisualization = ({
       ctx.fillStyle = '#e03131';
       ctx.font = 'bold 10px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(`LOAD AT h = ${forceHeight.toFixed(1)}m`, width / 4 - 80, arrowY - 5);
+      ctx.fillText('LATERAL LOAD AT GROUND LEVEL', width / 4 - 120, arrowY - 5);
     }
     
     // Draw legend
@@ -176,9 +247,9 @@ const SoilProfileVisualization = ({
     const legendY = height - 50;
     
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fillRect(legendX, legendY, 140, 40);
+    ctx.fillRect(legendX, legendY, 150, 40);
     ctx.strokeStyle = '#888';
-    ctx.strokeRect(legendX, legendY, 140, 40);
+    ctx.strokeRect(legendX, legendY, 150, 40);
     
     ctx.fillStyle = '#000';
     ctx.font = 'bold 10px Arial';
@@ -201,7 +272,7 @@ const SoilProfileVisualization = ({
         <canvas 
           ref={canvasRef} 
           width={400} 
-          height={500} 
+          height={550} 
           className="w-full" 
         />
       </div>

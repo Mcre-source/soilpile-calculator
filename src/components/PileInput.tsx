@@ -16,7 +16,8 @@ import {
   Waves, 
   ArrowDownUp, 
   Weight,
-  Calculator
+  Calculator,
+  MoveHorizontal
 } from 'lucide-react';
 
 interface PileInputProps {
@@ -192,35 +193,41 @@ export default function PileInput({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="requiredCapacity" className="flex items-center gap-2">
-                  <ArrowDownUp className="h-4 w-4" /> Required Axial Capacity (kN)
+                  <MoveHorizontal className="h-4 w-4" /> Required Lateral Capacity (kN)
                 </Label>
                 <Input
                   id="requiredCapacity"
                   type="number"
                   value={requiredCapacity}
                   onChange={(e) => setRequiredCapacity(parseFloat(e.target.value))}
-                  min="100"
-                  step="50"
+                  min="10"
+                  step="10"
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="waterTableDepth" className="flex items-center gap-2">
-                  <Waves className="h-4 w-4" /> Water Table Depth (m)
+                  <Waves className="h-4 w-4" /> Water Level (m)
                 </Label>
                 <div className="space-y-3">
                   <Slider
                     id="waterTableDepth"
-                    min={0}
+                    min={-5}
                     max={30}
                     step={0.5}
                     value={[waterTableDepth]}
                     onValueChange={(value) => setWaterTableDepth(value[0])}
                   />
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Surface</span>
-                    <span className="text-sm font-medium">{waterTableDepth.toFixed(1)}m</span>
-                    <span className="text-sm text-muted-foreground">30m</span>
+                    <span className="text-sm text-muted-foreground">5m above ground</span>
+                    <span className="text-sm font-medium">
+                      {waterTableDepth < 0 
+                        ? `${Math.abs(waterTableDepth).toFixed(1)}m above ground` 
+                        : waterTableDepth === 0 
+                          ? 'At ground level' 
+                          : `${waterTableDepth.toFixed(1)}m below ground`}
+                    </span>
+                    <span className="text-sm text-muted-foreground">30m below</span>
                   </div>
                 </div>
               </div>

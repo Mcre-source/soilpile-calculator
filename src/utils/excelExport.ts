@@ -73,6 +73,73 @@ export const exportToExcel = (
   const calculationStepsSheet = XLSX.utils.aoa_to_sheet(calculationStepsData);
   XLSX.utils.book_append_sheet(wb, calculationStepsSheet, 'Calculation Steps');
   
+  // Create Lateral Capacity Calculation worksheet
+  if (lateralResults && lateralResults.calculationDetails) {
+    const lateralCalcHeaders = ['Description', 'Formula/Calculation', 'Result/Value', 'Notes'];
+    const lateralCalcRows = lateralResults.calculationDetails.map((detail: any) => [
+      detail.description,
+      detail.formula || detail.calculation || '',
+      detail.result || detail.value?.toString() || '',
+      detail.notes || ''
+    ]);
+    
+    const lateralCalcData = [
+      ['LATERAL CAPACITY CALCULATION DETAILS', '', '', ''],
+      ['', '', '', ''],
+      ['Method:', lateralResults.calculationMethod, '', ''],
+      ['Pile Diameter:', `${calculationResults.pileProperties.diameter.toFixed(2)} m`, '', ''],
+      ['Pile Length:', `${calculationResults.pileProperties.length.toFixed(2)} m`, '', ''],
+      ['Force Height:', `${calculationResults.forceHeight.toFixed(2)} m`, '', ''],
+      ['Water Level:', waterLevelText(calculationResults.waterTableDepth), '', ''],
+      ['', '', '', ''],
+      lateralCalcHeaders,
+      ...lateralCalcRows,
+      ['', '', '', ''],
+      ['FINAL RESULTS', '', '', ''],
+      ['Ultimate Lateral Capacity:', `${lateralResults.lateralCapacity.toFixed(2)} kN`, '', ''],
+      ['Safety Factor:', `${calculationResults.appliedLateralSafetyFactor}`, '', ''],
+      ['Allowable Lateral Capacity:', `${lateralResults.allowableLateralCapacity.toFixed(2)} kN`, '', '']
+    ];
+    
+    const lateralCalcSheet = XLSX.utils.aoa_to_sheet(lateralCalcData);
+    
+    // Set column widths
+    const wscols = [
+      {wch: 40}, // Description column width
+      {wch: 40}, // Formula column width
+      {wch: 15}, // Result column width
+      {wch: 30}  // Notes column width
+    ];
+    lateralCalcSheet['!cols'] = wscols;
+    
+    XLSX.utils.book_append_sheet(wb, lateralCalcSheet, 'Lateral Calculation');
+  }
+  
+  // Create Input Data worksheet
+  const inputDataRows = [
+    ['INPUT DATA SUMMARY', ''],
+    ['', ''],
+    ['PILE PROPERTIES', ''],
+    ['Material:', calculationResults.pileProperties.material.toUpperCase()],
+    ['Diameter:', `${calculationResults.pileProperties.diameter.toFixed(2)} m`],
+    ['Length:', `${calculationResults.pileProperties.length.toFixed(2)} m`],
+    ['', ''],
+    ['LOADING', ''],
+    ['Required Lateral Capacity:', `${calculationResults.requiredCapacity.toFixed(2)} kN`],
+    ['Force Application Height:', `${calculationResults.forceHeight.toFixed(2)} m`],
+    ['', ''],
+    ['SITE CONDITIONS', ''],
+    ['Water Level:', waterLevelText(calculationResults.waterTableDepth)],
+    ['', ''],
+    ['SAFETY FACTORS', ''],
+    ['Bearing Capacity:', calculationResults.appliedSafetyFactor],
+    ['Structural Capacity:', calculationResults.appliedStructuralSafetyFactor],
+    ['Lateral Capacity:', calculationResults.appliedLateralSafetyFactor],
+  ];
+  
+  const inputDataSheet = XLSX.utils.aoa_to_sheet(inputDataRows);
+  XLSX.utils.book_append_sheet(wb, inputDataSheet, 'Input Data');
+  
   // Create Recommendations worksheet
   if (recommendedPiles.length > 0) {
     const recommendationsHeaders = ['Option', 'Diameter (m)', 'Length (m)', 'Allowable Capacity (kN)', 'Structural Utilization (%)', 'Efficiency (%)'];
@@ -109,6 +176,14 @@ export const exportToExcel = (
     assumptionsData.push([`${index + 1}`, assumption]);
   });
   
+  if (lateralResults && lateralResults.assumptions) {
+    assumptionsData.push(['', '']);
+    assumptionsData.push(['Lateral Capacity Assumptions', '']);
+    lateralResults.assumptions.forEach((assumption: string, index: number) => {
+      assumptionsData.push([`${index + 1}`, assumption]);
+    });
+  }
+  
   assumptionsData.push(['', '']);
   assumptionsData.push(['Safety Factors', '']);
   assumptionsData.push(['Bearing Capacity', calculationResults.appliedSafetyFactor.toString()]);
@@ -119,7 +194,7 @@ export const exportToExcel = (
   XLSX.utils.book_append_sheet(wb, assumptionsSheet, 'Assumptions');
   
   // Apply styles to cells
-  ['Summary', 'Soil Profile', 'Calculation Steps', 'Recommendations', 'Assumptions'].forEach(sheetName => {
+  ['Summary', 'Soil Profile', 'Calculation Steps', 'Lateral Calculation', 'Input Data', 'Recommendations', 'Assumptions'].forEach(sheetName => {
     const sheet = wb.Sheets[sheetName];
     if (!sheet) return;
     
@@ -136,7 +211,9 @@ export const exportToExcel = (
           cell.v.includes('RESULTS') || 
           cell.v.includes('CHECK') || 
           cell.v.includes('CAPACITY') || 
-          cell.v.includes('ASSUMPTIONS'))) {
+          cell.v.includes('ASSUMPTIONS') ||
+          cell.v.includes('INPUT DATA') ||
+          cell.v.includes('FINAL'))) {
         
         // This is likely a header or title - set bold
         if (!cell.s) cell.s = {};
@@ -150,3 +227,14 @@ export const exportToExcel = (
   
   return true;
 };
+
+// Helper function to format water level text
+function waterLevelText(waterTableDepth: number): string {
+  if (waterTableDepth < 0) {
+    return `${Math.abs(waterTableDepth).toFixed(1)} m above ground`;
+  } else if (waterTableDepth === 0) {
+    return 'At ground level';
+  } else {
+    return `${waterTableDepth.toFixed(1)} m below ground`;
+  }
+}

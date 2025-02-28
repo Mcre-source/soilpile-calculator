@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { CalculatorIcon, ChevronDown, ChevronUp, Shield, FileDown } from 'lucide-react';
+import { CalculatorIcon, ChevronDown, ChevronUp, Shield, FileDown, MoveHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,7 @@ const Index = () => {
   const [autoLength, setAutoLength] = useState(false);
 
   // State for calculation inputs
-  const [requiredCapacity, setRequiredCapacity] = useState(1000);
+  const [requiredCapacity, setRequiredCapacity] = useState(100); // Default lower for lateral load
   const [waterTableDepth, setWaterTableDepth] = useState(5);
   const [forceHeight, setForceHeight] = useState(0);
   const [calculationMethod, setCalculationMethod] = useState('beta');
@@ -60,30 +60,30 @@ const Index = () => {
   useEffect(() => {
     if (autoLength && pileProperties.diameter && requiredCapacity > 0) {
       // Calculate the optimal pile length for the given diameter and required capacity
-      // This is a simplified version - we'll use the recommendation engine instead of a complex calculation here
-      const recommendations = recommendPileDimensions(
-        requiredCapacity,
-        soilLayers,
-        waterTableDepth,
-        pileProperties.materialProperties,
-        bearingSafetyFactor,
-        structuralSafetyFactor
-      );
+      // For lateral capacity, we'll use a different approach
+      const tryLengths = [5, 7.5, 10, 12.5, 15, 17.5, 20];
+      let recommendedLength = 20; // Default to maximum
       
-      if (recommendations.length > 0) {
-        // Find a recommendation with the same diameter or close to it
-        const matchingRecommendation = recommendations.find(r => 
-          Math.abs(r.diameter - pileProperties.diameter) < 0.1
+      // Try different lengths and find the shortest one that works
+      for (const length of tryLengths) {
+        const testPileProps = { ...pileProperties, length };
+        const lateralCapacityResults = calculateLateralCapacity(
+          soilLayers,
+          testPileProps,
+          waterTableDepth,
+          forceHeight,
+          lateralSafetyFactor
         );
         
-        if (matchingRecommendation) {
-          // Limit the maximum length to 20m as requested
-          const recommendedLength = Math.min(20, matchingRecommendation.length);
-          setPileProperties(prev => ({ ...prev, length: recommendedLength }));
+        if (lateralCapacityResults.allowableLateralCapacity >= requiredCapacity) {
+          recommendedLength = length;
+          break;
         }
       }
+      
+      setPileProperties(prev => ({ ...prev, length: recommendedLength }));
     }
-  }, [autoLength, pileProperties.diameter, pileProperties.material, requiredCapacity, soilLayers, waterTableDepth]);
+  }, [autoLength, pileProperties.diameter, pileProperties.material, requiredCapacity, soilLayers, waterTableDepth, forceHeight, lateralSafetyFactor]);
 
   // Calculate results
   const calculateResults = () => {
@@ -116,7 +116,7 @@ const Index = () => {
       return;
     }
 
-    // Perform calculations
+    // Perform calculations for axial capacity (for reference only in this case)
     let results;
     if (calculationMethod === 'alpha') {
       results = calculateAlphaMethod(soilLayers, pileProperties, waterTableDepth);
@@ -136,13 +136,29 @@ const Index = () => {
     results.appliedStructuralSafetyFactor = structuralSafetyFactor;
     results.appliedLateralSafetyFactor = lateralSafetyFactor;
 
-    // Calculate structural capacity check
-    const structuralResults = checkStructuralCapacity(
-      pileProperties,
-      pileProperties.materialProperties,
-      requiredCapacity * bearingSafetyFactor,
-      structuralSafetyFactor
-    );
+    // For a laterally loaded pile, we'll check bending stress
+    // This is a simplified calculation
+    const moment = requiredCapacity * (forceHeight + pileProperties.length / 3);
+    const momentOfInertia = Math.PI * Math.pow(pileProperties.diameter/2, 4) / 4;
+    const maxFiberDistance = pileProperties.diameter / 2;
+    const bendingStress = (moment * maxFiberDistance) / momentOfInertia / 1000; // MPa
+    
+    const allowableBendingStress = pileProperties.materialProperties.yield_strength / structuralSafetyFactor;
+    const utilizationRatio = bendingStress / allowableBendingStress;
+
+    // Create a structural check result
+    const structuralResults = {
+      crossSectionalArea: Math.PI * Math.pow(pileProperties.diameter/2, 2),
+      compressiveStress: bendingStress, // Using bending stress instead for lateral load
+      allowableStress: allowableBendingStress,
+      utilizationRatio: utilizationRatio,
+      isAdequate: utilizationRatio <= 1.0,
+      notes: utilizationRatio <= 0.7 
+        ? "The pile has sufficient structural capacity for bending with a good safety margin."
+        : utilizationRatio <= 1.0 
+          ? "The pile has adequate structural capacity for bending, but consider increasing the size for better long-term performance."
+          : "The pile is structurally inadequate for the applied lateral load. Increase the pile dimensions."
+    };
 
     // Calculate lateral capacity
     const lateralCapacityResults = calculateLateralCapacity(
@@ -153,7 +169,7 @@ const Index = () => {
       lateralSafetyFactor
     );
 
-    // Generate recommendations
+    // Generate recommendations for lateral capacity
     const recommendations = recommendPileDimensions(
       requiredCapacity,
       soilLayers,
@@ -219,7 +235,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <CalculatorIcon className="h-8 w-8 mr-3" />
-              <h1 className="text-2xl font-semibold text-gray-900">Soil Pile Calculator</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Lateral Pile Calculator</h1>
             </div>
           </div>
         </div>
@@ -338,23 +354,13 @@ const Index = () => {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Calculation Method</label>
-                        <Select
-                          value={calculationMethod}
-                          onValueChange={setCalculationMethod}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select calculation method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="alpha">Alpha Method (Total Stress)</SelectItem>
-                            <SelectItem value="beta">Beta Method (Effective Stress)</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <label className="text-sm font-medium">Analysis Type</label>
+                        <div className="p-3 border rounded-md bg-muted/50 flex items-center gap-2">
+                          <MoveHorizontal className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Lateral Loading Analysis</span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {calculationMethod === 'alpha' 
-                            ? 'Recommended for cohesive soils (clays)' 
-                            : 'Recommended for granular soils (sands)'}
+                          Calculations focused on lateral capacity using Broms' method
                         </p>
                       </div>
                     </div>
@@ -420,7 +426,7 @@ const Index = () => {
       <footer className="bg-white border-t mt-12">
         <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <p className="text-sm text-center text-gray-500">
-            Soil Pile Calculator | For preliminary design purposes only
+            Lateral Pile Calculator | For preliminary design purposes only
           </p>
         </div>
       </footer>
