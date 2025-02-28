@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { 
   CircleOff, 
   CircleDot, 
   Ruler, 
   Waves, 
   ArrowDownUp, 
-  Weight
+  Weight,
+  Calculator
 } from 'lucide-react';
 
 interface PileInputProps {
@@ -26,6 +28,8 @@ interface PileInputProps {
   setWaterTableDepth: (depth: number) => void;
   forceHeight: number;
   setForceHeight: (height: number) => void;
+  autoLength: boolean;
+  setAutoLength: (auto: boolean) => void;
 }
 
 export default function PileInput({ 
@@ -36,7 +40,9 @@ export default function PileInput({
   waterTableDepth,
   setWaterTableDepth,
   forceHeight,
-  setForceHeight
+  setForceHeight,
+  autoLength,
+  setAutoLength
 }: PileInputProps) {
   const [customDiameter, setCustomDiameter] = useState(false);
 
@@ -140,24 +146,46 @@ export default function PileInput({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="length" className="flex items-center gap-2">
-                  <Ruler className="h-4 w-4" /> Length (m)
-                </Label>
-                <div className="space-y-3">
-                  <Slider
-                    id="length"
-                    min={3}
-                    max={50}
-                    step={0.5}
-                    value={[pileProperties.length]}
-                    onValueChange={(value) => handlePileChange('length', value[0])}
-                  />
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">3m</span>
-                    <span className="text-sm font-medium">{pileProperties.length.toFixed(1)}m</span>
-                    <span className="text-sm text-muted-foreground">50m</span>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="length" className="flex items-center gap-2">
+                    <Ruler className="h-4 w-4" /> Length (m)
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="autoLength" className="text-xs text-muted-foreground">
+                      Auto Calculate
+                    </Label>
+                    <Switch
+                      id="autoLength"
+                      checked={autoLength}
+                      onCheckedChange={setAutoLength}
+                    />
                   </div>
                 </div>
+                
+                {autoLength ? (
+                  <div className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                    <Calculator className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Pile length will be automatically calculated (max 20m)
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Slider
+                      id="length"
+                      min={3}
+                      max={50}
+                      step={0.5}
+                      value={[pileProperties.length]}
+                      onValueChange={(value) => handlePileChange('length', value[0])}
+                    />
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">3m</span>
+                      <span className="text-sm font-medium">{pileProperties.length.toFixed(1)}m</span>
+                      <span className="text-sm text-muted-foreground">50m</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
