@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { PILE_MATERIALS, STANDARD_PILE_DIAMETERS } from '../utils/constants';
+import { PILE_MATERIALS, STANDARD_PILE_DIAMETERS, COMPOSITE_MATERIALS, COMPOSITE_CORE_MATERIALS } from '../utils/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,15 +9,16 @@ import { Slider } from '@/components/ui/slider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   CircleOff, 
   CircleDot, 
   Ruler, 
   Waves, 
-  ArrowDownUp, 
   Weight,
   Calculator,
-  MoveHorizontal
+  MoveHorizontal,
+  ChevronUp
 } from 'lucide-react';
 
 interface PileInputProps {
@@ -31,6 +32,8 @@ interface PileInputProps {
   setForceHeight: (height: number) => void;
   autoLength: boolean;
   setAutoLength: (auto: boolean) => void;
+  pileTopElevation: number;
+  setPileTopElevation: (elevation: number) => void;
 }
 
 export default function PileInput({ 
@@ -43,7 +46,9 @@ export default function PileInput({
   forceHeight,
   setForceHeight,
   autoLength,
-  setAutoLength
+  setAutoLength,
+  pileTopElevation,
+  setPileTopElevation
 }: PileInputProps) {
   const [customDiameter, setCustomDiameter] = useState(false);
 
@@ -54,20 +59,49 @@ export default function PileInput({
   const handleMaterialChange = (materialId: string) => {
     const material = PILE_MATERIALS.find(m => m.id === materialId);
     if (material) {
-      setPileProperties({ 
+      const newPileProps = { 
         ...pileProperties, 
         material: materialId,
         materialProperties: material 
-      });
+      };
+
+      // Add wall thickness for steel piles
+      if (material.id === 'steel' && !pileProperties.wallThickness) {
+        newPileProps.wallThickness = material.default_wall_thickness;
+      }
+
+      // Add composite material properties
+      if (material.id === 'composite' && !pileProperties.compositeMaterials) {
+        newPileProps.compositeMaterials = {
+          material1: material.composite_material_1,
+          material2: material.composite_material_2,
+          ratio: material.composite_ratio
+        };
+      }
+
+      setPileProperties(newPileProps);
     }
   };
 
+  // Ensure force height doesn't exceed pile top elevation
   useEffect(() => {
-    // Initial material setup
+    if (forceHeight > pileTopElevation) {
+      setForceHeight(pileTopElevation);
+    }
+  }, [forceHeight, pileTopElevation, setForceHeight]);
+
+  // Initial material setup
+  useEffect(() => {
     if (!pileProperties.materialProperties && pileProperties.material) {
       handleMaterialChange(pileProperties.material);
     }
   }, []);
+
+  // Get the selected composite material details
+  const getCompositeMaterialDetails = (materialId: string) => {
+    return COMPOSITE_MATERIALS.find(m => m.id === materialId) ||
+           COMPOSITE_CORE_MATERIALS.find(m => m.id === materialId);
+  };
 
   return (
     <Card className="w-full">
@@ -97,6 +131,127 @@ export default function PileInput({
                   </SelectContent>
                 </Select>
               </div>
+
+              {pileProperties.material === 'steel' && (
+                <div className="space-y-2">
+                  <Label htmlFor="wallThickness" className="flex items-center gap-2">
+                    <CircleOff className="h-4 w-4" /> Wall Thickness (m)
+                  </Label>
+                  <Input
+                    id="wallThickness"
+                    type="number"
+                    value={pileProperties.wallThickness || 0.02}
+                    onChange={(e) => handlePileChange('wallThickness', parseFloat(e.target.value))}
+                    min="0.005"
+                    max="0.1"
+                    step="0.001"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Typical range: 5mm - 100mm depending on diameter and loads
+                  </p>
+                </div>
+              )}
+
+              {pileProperties.material === 'composite' && pileProperties.compositeMaterials && (
+                <div className="space-y-3">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="composite-materials">
+                      <AccordionTrigger className="text-sm">
+                        Composite Material Properties
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="compositeMaterial1">Outer Material</Label>
+                            <Select
+                              value={pileProperties.compositeMaterials.material1}
+                              onValueChange={(value) => {
+                                handlePileChange('compositeMaterials', {
+                                  ...pileProperties.compositeMaterials,
+                                  material1: value
+                                });
+                              }}
+                            >
+                              <SelectTrigger id="compositeMaterial1">
+                                <SelectValue placeholder="Select outer material" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {COMPOSITE_MATERIALS.map((material) => (
+                                  <SelectItem key={material.id} value={material.id}>
+                                    {material.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="compositeMaterial2">Core Material</Label>
+                            <Select
+                              value={pileProperties.compositeMaterials.material2}
+                              onValueChange={(value) => {
+                                handlePileChange('compositeMaterials', {
+                                  ...pileProperties.compositeMaterials,
+                                  material2: value
+                                });
+                              }}
+                            >
+                              <SelectTrigger id="compositeMaterial2">
+                                <SelectValue placeholder="Select core material" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {COMPOSITE_CORE_MATERIALS.map((material) => (
+                                  <SelectItem key={material.id} value={material.id}>
+                                    {material.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="compositeRatio">
+                              Fiber Reinforcement Ratio: {(pileProperties.compositeMaterials.ratio * 100).toFixed(0)}%
+                            </Label>
+                            <Slider
+                              id="compositeRatio"
+                              min={0.1}
+                              max={0.6}
+                              step={0.05}
+                              value={[pileProperties.compositeMaterials.ratio]}
+                              onValueChange={(value) => {
+                                handlePileChange('compositeMaterials', {
+                                  ...pileProperties.compositeMaterials,
+                                  ratio: value[0]
+                                });
+                              }}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>10%</span>
+                              <span>60%</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+                            <div className="flex justify-between">
+                              <span>Outer Material: </span>
+                              <span>
+                                {getCompositeMaterialDetails(pileProperties.compositeMaterials.material1)?.yield_strength || '–'} MPa
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Core Material: </span>
+                              <span>
+                                {getCompositeMaterialDetails(pileProperties.compositeMaterials.material2)?.yield_strength || '–'} MPa
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -188,6 +343,27 @@ export default function PileInput({
                   </div>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pileTopElevation" className="flex items-center gap-2">
+                  <ChevronUp className="h-4 w-4" /> Pile Top Elevation (m)
+                </Label>
+                <div className="space-y-3">
+                  <Slider
+                    id="pileTopElevation"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={[pileTopElevation]}
+                    onValueChange={(value) => setPileTopElevation(value[0])}
+                  />
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Ground level</span>
+                    <span className="text-sm font-medium">{pileTopElevation.toFixed(1)}m above ground</span>
+                    <span className="text-sm text-muted-foreground">10m</span>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="space-y-4">
@@ -240,17 +416,31 @@ export default function PileInput({
                   <Slider
                     id="forceHeight"
                     min={0}
-                    max={10}
+                    max={Math.max(pileTopElevation, 0.1)}
                     step={0.1}
-                    value={[forceHeight]}
+                    value={[Math.min(forceHeight, pileTopElevation)]}
                     onValueChange={(value) => setForceHeight(value[0])}
                   />
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Ground level</span>
                     <span className="text-sm font-medium">{forceHeight.toFixed(1)}m</span>
-                    <span className="text-sm text-muted-foreground">10m</span>
+                    <span className="text-sm text-muted-foreground">{pileTopElevation.toFixed(1)}m</span>
                   </div>
+                  {forceHeight > pileTopElevation && (
+                    <p className="text-xs text-destructive">
+                      Force height cannot exceed pile top elevation
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              <div className="p-3 bg-muted/50 rounded-md mt-2">
+                <h4 className="text-sm font-medium mb-2">Calculation Approach</h4>
+                <p className="text-xs text-muted-foreground">
+                  Lateral capacity is calculated using Broms' method, which considers soil type and pile behavior. 
+                  Short rigid piles and long flexible piles are analyzed differently. The calculation accounts for 
+                  pile embedment, soil strength parameters, and lateral deflection. No axial loading is considered in this analysis.
+                </p>
               </div>
             </div>
           </div>
