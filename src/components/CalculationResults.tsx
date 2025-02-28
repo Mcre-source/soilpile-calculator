@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, Ruler } from 'lucide-react';
+import { SAFETY_FACTORS } from '../utils/constants';
 
 interface CalculationResultsProps {
   calculationResults: any;
@@ -455,11 +456,11 @@ export default function CalculationResults({
                     </div>
                     <div className="flex justify-between">
                       <span>Structural Capacity:</span>
-                      <span className="font-medium">{SAFETY_FACTORS.structural}</span>
+                      <span className="font-medium">{calculationResults.appliedStructuralSafetyFactor || SAFETY_FACTORS.structural}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Lateral Capacity:</span>
-                      <span className="font-medium">{SAFETY_FACTORS.sliding}</span>
+                      <span className="font-medium">{calculationResults.appliedLateralSafetyFactor || SAFETY_FACTORS.sliding}</span>
                     </div>
                   </div>
                 </div>

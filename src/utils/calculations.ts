@@ -116,7 +116,7 @@ export const calculateAlphaMethod = (
     assumptions: [
       'Alpha factors were estimated based on soil cohesion values',
       'End bearing calculation uses Meyerhof\'s method for granular soils and Nc=9 for cohesive soils',
-      `Factor of safety for bearing capacity: ${SAFETY_FACTORS.bearing}`
+      `Factor of safety for bearing capacity: ${SAFETY_FACTORS.bearing} (default, can be overridden)`
     ]
   };
 };
@@ -241,7 +241,7 @@ export const calculateBetaMethod = (
       'Coefficient of lateral earth pressure K = 0.8 was assumed for the calculation',
       'Beta values were calculated based on effective friction angles',
       'End bearing calculation uses bearing capacity factors derived from friction angles',
-      `Factor of safety for bearing capacity: ${SAFETY_FACTORS.bearing}`
+      `Factor of safety for bearing capacity: ${SAFETY_FACTORS.bearing} (default, can be overridden)`
     ]
   };
 };
@@ -250,7 +250,8 @@ export const calculateBetaMethod = (
 export const checkStructuralCapacity = (
   pileProperties: any,
   material: any,
-  appliedLoad: number
+  appliedLoad: number,
+  safetyFactor: number = SAFETY_FACTORS.structural
 ) => {
   // Calculate cross-sectional area
   const pileRadius = pileProperties.diameter / 2;
@@ -260,7 +261,7 @@ export const checkStructuralCapacity = (
   const compressiveStress = appliedLoad / crossSectionalArea / 1000; // Convert to MPa
   
   // Calculate allowable stress
-  const allowableStress = material.yield_strength / SAFETY_FACTORS.structural;
+  const allowableStress = material.yield_strength / safetyFactor;
   
   // Calculate utilization ratio
   const utilizationRatio = compressiveStress / allowableStress;
@@ -284,7 +285,9 @@ export const recommendPileDimensions = (
   requiredCapacity: number,
   soilLayers: any[],
   waterTableDepth: number,
-  material: any
+  material: any,
+  bearingSafetyFactor: number = SAFETY_FACTORS.bearing,
+  structuralSafetyFactor: number = SAFETY_FACTORS.structural
 ) => {
   const recommendations = [];
   
@@ -298,23 +301,26 @@ export const recommendPileDimensions = (
       
       // Calculate capacity using Beta method (assuming granular soils are more common)
       const capacityResults = calculateBetaMethod(soilLayers, pileProperties, waterTableDepth);
+      // Apply user-defined safety factor
+      const allowableCapacity = capacityResults.totalCapacity / bearingSafetyFactor;
       
       // Check if this pile configuration meets the required capacity
-      if (capacityResults.allowableCapacity >= requiredCapacity) {
+      if (allowableCapacity >= requiredCapacity) {
         // Check structural capacity
         const structuralCheck = checkStructuralCapacity(
           pileProperties,
           material,
-          requiredCapacity * SAFETY_FACTORS.bearing
+          requiredCapacity * bearingSafetyFactor,
+          structuralSafetyFactor
         );
         
         if (structuralCheck.isAdequate) {
           recommendations.push({
             diameter,
             length,
-            allowableCapacity: capacityResults.allowableCapacity,
+            allowableCapacity,
             utilizationRatio: structuralCheck.utilizationRatio,
-            efficiency: capacityResults.allowableCapacity / requiredCapacity,
+            efficiency: allowableCapacity / requiredCapacity,
           });
           
           // Break out of the inner loop since we found a valid length for this diameter
@@ -337,7 +343,8 @@ export const calculateLateralCapacity = (
   soilLayers: any[],
   pileProperties: any,
   waterTableDepth: number,
-  forceHeight: number
+  forceHeight: number,
+  safetyFactor: number = SAFETY_FACTORS.sliding
 ) => {
   const pileDiameter = pileProperties.diameter;
   const pileLength = pileProperties.length;
@@ -380,7 +387,7 @@ export const calculateLateralCapacity = (
   lateralCapacity *= momentReduction;
   
   // Apply safety factor
-  const allowableLateralCapacity = lateralCapacity / SAFETY_FACTORS.sliding;
+  const allowableLateralCapacity = lateralCapacity / safetyFactor;
   
   return {
     lateralCapacity,
@@ -390,7 +397,7 @@ export const calculateLateralCapacity = (
       `Critical soil layer considered at depth ${criticalDepth.toFixed(1)}m`,
       'Simplified Broms\' method used for lateral capacity estimation',
       `Force application height of ${forceHeight}m reduces capacity by factor of ${momentReduction.toFixed(2)}`,
-      `Factor of safety for lateral capacity: ${SAFETY_FACTORS.sliding}`
+      `Factor of safety for lateral capacity: ${safetyFactor}`
     ]
   };
 };

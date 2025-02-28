@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { CalculatorIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalculatorIcon, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Index = () => {
   const { toast } = useToast();
@@ -36,6 +38,11 @@ const Index = () => {
   const [waterTableDepth, setWaterTableDepth] = useState(5);
   const [forceHeight, setForceHeight] = useState(0);
   const [calculationMethod, setCalculationMethod] = useState('beta');
+  
+  // State for safety factors
+  const [bearingSafetyFactor, setBearingSafetyFactor] = useState(SAFETY_FACTORS.bearing);
+  const [structuralSafetyFactor, setStructuralSafetyFactor] = useState(SAFETY_FACTORS.structural);
+  const [lateralSafetyFactor, setLateralSafetyFactor] = useState(SAFETY_FACTORS.sliding);
 
   // State for calculation results
   const [calculationResults, setCalculationResults] = useState(null);
@@ -65,6 +72,16 @@ const Index = () => {
       return;
     }
 
+    // Validate safety factors
+    if (bearingSafetyFactor < 1 || structuralSafetyFactor < 1 || lateralSafetyFactor < 1) {
+      toast({
+        title: "Error",
+        description: "Safety factors must be greater than or equal to 1.0",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Perform calculations
     let results;
     if (calculationMethod === 'alpha') {
@@ -73,18 +90,24 @@ const Index = () => {
       results = calculateBetaMethod(soilLayers, pileProperties, waterTableDepth);
     }
 
+    // Override the default safety factor with user input
+    results.allowableCapacity = results.totalCapacity / bearingSafetyFactor;
+
     // Add input values to results for reference
     results.pileProperties = pileProperties;
     results.requiredCapacity = requiredCapacity;
     results.waterTableDepth = waterTableDepth;
     results.forceHeight = forceHeight;
-    results.appliedSafetyFactor = SAFETY_FACTORS.bearing;
+    results.appliedSafetyFactor = bearingSafetyFactor;
+    results.appliedStructuralSafetyFactor = structuralSafetyFactor;
+    results.appliedLateralSafetyFactor = lateralSafetyFactor;
 
     // Calculate structural capacity check
     const structuralResults = checkStructuralCapacity(
       pileProperties,
       pileProperties.materialProperties,
-      requiredCapacity * SAFETY_FACTORS.bearing
+      requiredCapacity * bearingSafetyFactor,
+      structuralSafetyFactor
     );
 
     // Calculate lateral capacity
@@ -92,7 +115,8 @@ const Index = () => {
       soilLayers,
       pileProperties,
       waterTableDepth,
-      forceHeight
+      forceHeight,
+      lateralSafetyFactor
     );
 
     // Generate recommendations
@@ -100,7 +124,9 @@ const Index = () => {
       requiredCapacity,
       soilLayers,
       waterTableDepth,
-      pileProperties.materialProperties
+      pileProperties.materialProperties,
+      bearingSafetyFactor,
+      structuralSafetyFactor
     );
 
     // Update state with results
@@ -144,9 +170,10 @@ const Index = () => {
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold mb-4">Input Parameters</h2>
               <Tabs defaultValue="soil" className="w-full">
-                <TabsList className="grid grid-cols-2 mb-4">
+                <TabsList className="grid grid-cols-3 mb-4">
                   <TabsTrigger value="soil">Soil Profile</TabsTrigger>
                   <TabsTrigger value="pile">Pile Properties</TabsTrigger>
+                  <TabsTrigger value="safety">Safety Factors</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="soil" className="space-y-4">
@@ -164,6 +191,76 @@ const Index = () => {
                     forceHeight={forceHeight}
                     setForceHeight={setForceHeight}
                   />
+                </TabsContent>
+                
+                <TabsContent value="safety" className="space-y-4">
+                  <Card className="w-full">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-5 w-5" />
+                          <h3 className="text-lg font-medium">Safety Factors</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="bearingSafetyFactor">Bearing Capacity</Label>
+                            <Input 
+                              id="bearingSafetyFactor"
+                              type="number" 
+                              value={bearingSafetyFactor}
+                              onChange={(e) => setBearingSafetyFactor(parseFloat(e.target.value))}
+                              min="1.0"
+                              step="0.1"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Typical value: 2.0 - 3.0
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="structuralSafetyFactor">Structural Capacity</Label>
+                            <Input 
+                              id="structuralSafetyFactor"
+                              type="number" 
+                              value={structuralSafetyFactor}
+                              onChange={(e) => setStructuralSafetyFactor(parseFloat(e.target.value))}
+                              min="1.0"
+                              step="0.1"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Typical value: 1.5 - 2.0
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="lateralSafetyFactor">Lateral Capacity</Label>
+                            <Input 
+                              id="lateralSafetyFactor"
+                              type="number" 
+                              value={lateralSafetyFactor}
+                              onChange={(e) => setLateralSafetyFactor(parseFloat(e.target.value))}
+                              min="1.0"
+                              step="0.1"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Typical value: 1.5 - 2.0
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground mt-2 p-4 bg-muted rounded-md">
+                          <p className="mb-2 font-medium">Guidance on Safety Factors:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            <li>Higher safety factors should be used for critical structures or when soil conditions are uncertain</li>
+                            <li>Lower safety factors may be acceptable for temporary structures or when soil conditions are well-known</li>
+                            <li>Local building codes and regulations may specify minimum required safety factors</li>
+                            <li>For preliminary design, the default values are typically adequate</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               </Tabs>
             </CardContent>
