@@ -152,7 +152,7 @@ export default function PileInput({
                 </div>
               )}
 
-              {pileProperties.material === 'composite' && pileProperties.compositeMaterials && (
+              {pileProperties.material === 'composite' && (
                 <div className="space-y-3">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="composite-materials">
@@ -164,10 +164,14 @@ export default function PileInput({
                           <div className="space-y-2">
                             <Label htmlFor="compositeMaterial1">Outer Material</Label>
                             <Select
-                              value={pileProperties.compositeMaterials.material1}
+                              value={pileProperties.compositeMaterials?.material1 || PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_1}
                               onValueChange={(value) => {
                                 handlePileChange('compositeMaterials', {
-                                  ...pileProperties.compositeMaterials,
+                                  ...pileProperties.compositeMaterials || {
+                                    material1: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_1,
+                                    material2: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_2,
+                                    ratio: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_ratio || 0.3
+                                  },
                                   material1: value
                                 });
                               }}
@@ -188,10 +192,14 @@ export default function PileInput({
                           <div className="space-y-2">
                             <Label htmlFor="compositeMaterial2">Core Material</Label>
                             <Select
-                              value={pileProperties.compositeMaterials.material2}
+                              value={pileProperties.compositeMaterials?.material2 || PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_2}
                               onValueChange={(value) => {
                                 handlePileChange('compositeMaterials', {
-                                  ...pileProperties.compositeMaterials,
+                                  ...pileProperties.compositeMaterials || {
+                                    material1: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_1,
+                                    material2: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_2,
+                                    ratio: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_ratio || 0.3
+                                  },
                                   material2: value
                                 });
                               }}
@@ -211,17 +219,21 @@ export default function PileInput({
 
                           <div className="space-y-2">
                             <Label htmlFor="compositeRatio">
-                              Fiber Reinforcement Ratio: {(pileProperties.compositeMaterials.ratio * 100).toFixed(0)}%
+                              Fiber Reinforcement Ratio: {((pileProperties.compositeMaterials?.ratio || 0.3) * 100).toFixed(0)}%
                             </Label>
                             <Slider
                               id="compositeRatio"
                               min={0.1}
                               max={0.6}
                               step={0.05}
-                              value={[pileProperties.compositeMaterials.ratio]}
+                              value={[pileProperties.compositeMaterials?.ratio || 0.3]}
                               onValueChange={(value) => {
                                 handlePileChange('compositeMaterials', {
-                                  ...pileProperties.compositeMaterials,
+                                  ...pileProperties.compositeMaterials || {
+                                    material1: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_1,
+                                    material2: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_2,
+                                    ratio: PILE_MATERIALS.find(m => m.id === 'composite')?.composite_ratio || 0.3
+                                  },
                                   ratio: value[0]
                                 });
                               }}
@@ -236,13 +248,13 @@ export default function PileInput({
                             <div className="flex justify-between">
                               <span>Outer Material: </span>
                               <span>
-                                {getCompositeMaterialDetails(pileProperties.compositeMaterials.material1)?.yield_strength || '–'} MPa
+                                {getCompositeMaterialDetails(pileProperties.compositeMaterials?.material1 || PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_1 || '')?.yield_strength || '–'} MPa
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span>Core Material: </span>
                               <span>
-                                {getCompositeMaterialDetails(pileProperties.compositeMaterials.material2)?.yield_strength || '–'} MPa
+                                {getCompositeMaterialDetails(pileProperties.compositeMaterials?.material2 || PILE_MATERIALS.find(m => m.id === 'composite')?.composite_material_2 || '')?.yield_strength || '–'} MPa
                               </span>
                             </div>
                           </div>

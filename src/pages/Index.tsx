@@ -35,6 +35,9 @@ const Index = () => {
     length: 15
   });
 
+  // State for pile top elevation
+  const [pileTopElevation, setPileTopElevation] = useState(0);
+
   // State for pile auto-length calculation
   const [autoLength, setAutoLength] = useState(false);
 
@@ -44,10 +47,9 @@ const Index = () => {
   const [forceHeight, setForceHeight] = useState(0);
   const [calculationMethod, setCalculationMethod] = useState('beta');
   
-  // State for safety factors
-  const [bearingSafetyFactor, setBearingSafetyFactor] = useState(SAFETY_FACTORS.bearing);
+  // State for safety factor (simplified to a single factor for soil parameters)
+  const [soilSafetyFactor, setSoilSafetyFactor] = useState(1.5);
   const [structuralSafetyFactor, setStructuralSafetyFactor] = useState(SAFETY_FACTORS.structural);
-  const [lateralSafetyFactor, setLateralSafetyFactor] = useState(SAFETY_FACTORS.sliding);
 
   // State for calculation results
   const [calculationResults, setCalculationResults] = useState(null);
@@ -72,7 +74,7 @@ const Index = () => {
           testPileProps,
           waterTableDepth,
           forceHeight,
-          lateralSafetyFactor
+          soilSafetyFactor
         );
         
         if (lateralCapacityResults.allowableLateralCapacity >= requiredCapacity) {
@@ -83,7 +85,14 @@ const Index = () => {
       
       setPileProperties(prev => ({ ...prev, length: recommendedLength }));
     }
-  }, [autoLength, pileProperties.diameter, pileProperties.material, requiredCapacity, soilLayers, waterTableDepth, forceHeight, lateralSafetyFactor]);
+  }, [autoLength, pileProperties.diameter, pileProperties.material, requiredCapacity, soilLayers, waterTableDepth, forceHeight, soilSafetyFactor]);
+
+  // Ensure force height doesn't exceed pile top elevation
+  useEffect(() => {
+    if (forceHeight > pileTopElevation) {
+      setForceHeight(pileTopElevation);
+    }
+  }, [pileTopElevation, forceHeight]);
 
   // Calculate results
   const calculateResults = () => {
@@ -107,7 +116,7 @@ const Index = () => {
     }
 
     // Validate safety factors
-    if (bearingSafetyFactor < 1 || structuralSafetyFactor < 1 || lateralSafetyFactor < 1) {
+    if (soilSafetyFactor < 1 || structuralSafetyFactor < 1) {
       toast({
         title: "Error",
         description: "Safety factors must be greater than or equal to 1.0",
@@ -116,31 +125,52 @@ const Index = () => {
       return;
     }
 
-    // Perform calculations for axial capacity (for reference only in this case)
-    let results;
-    if (calculationMethod === 'alpha') {
-      results = calculateAlphaMethod(soilLayers, pileProperties, waterTableDepth);
-    } else {
-      results = calculateBetaMethod(soilLayers, pileProperties, waterTableDepth);
-    }
+    // Perform calculations for lateral capacity
+    const lateralCapacityResults = calculateLateralCapacity(
+      soilLayers,
+      pileProperties,
+      waterTableDepth,
+      forceHeight,
+      soilSafetyFactor
+    );
 
-    // Override the default safety factor with user input
-    results.allowableCapacity = results.totalCapacity / bearingSafetyFactor;
-
-    // Add input values to results for reference
-    results.pileProperties = pileProperties;
-    results.requiredCapacity = requiredCapacity;
-    results.waterTableDepth = waterTableDepth;
-    results.forceHeight = forceHeight;
-    results.appliedSafetyFactor = bearingSafetyFactor;
-    results.appliedStructuralSafetyFactor = structuralSafetyFactor;
-    results.appliedLateralSafetyFactor = lateralSafetyFactor;
+    // Generate placeholder results (no axial load applied)
+    const results = {
+      totalCapacity: 0, // No axial load
+      skinFriction: 0,  // No skin friction for lateral load
+      endBearing: 0,    // No end bearing for lateral load
+      allowableCapacity: 0, // No axial capacity for lateral load
+      calculationMethod: "Broms' Method for Lateral Loading",
+      notes: "This analysis considers lateral loading only. No axial load is applied.",
+      pileProperties: pileProperties,
+      requiredCapacity: requiredCapacity,
+      waterTableDepth: waterTableDepth,
+      forceHeight: forceHeight,
+      pileTopElevation: pileTopElevation,
+      appliedSafetyFactor: soilSafetyFactor,
+      appliedStructuralSafetyFactor: structuralSafetyFactor
+    };
 
     // For a laterally loaded pile, we'll check bending stress
     // This is a simplified calculation
     const moment = requiredCapacity * (forceHeight + pileProperties.length / 3);
-    const momentOfInertia = Math.PI * Math.pow(pileProperties.diameter/2, 4) / 4;
-    const maxFiberDistance = pileProperties.diameter / 2;
+    
+    // Calculate moment of inertia based on pile type
+    let momentOfInertia;
+    let maxFiberDistance;
+    
+    if (pileProperties.material === 'steel' && pileProperties.wallThickness) {
+      // For tubular steel piles
+      const outerRadius = pileProperties.diameter / 2;
+      const innerRadius = outerRadius - pileProperties.wallThickness;
+      momentOfInertia = Math.PI * (Math.pow(outerRadius, 4) - Math.pow(innerRadius, 4)) / 4;
+      maxFiberDistance = outerRadius;
+    } else {
+      // For solid piles
+      momentOfInertia = Math.PI * Math.pow(pileProperties.diameter/2, 4) / 4;
+      maxFiberDistance = pileProperties.diameter / 2;
+    }
+    
     const bendingStress = (moment * maxFiberDistance) / momentOfInertia / 1000; // MPa
     
     const allowableBendingStress = pileProperties.materialProperties.yield_strength / structuralSafetyFactor;
@@ -148,7 +178,9 @@ const Index = () => {
 
     // Create a structural check result
     const structuralResults = {
-      crossSectionalArea: Math.PI * Math.pow(pileProperties.diameter/2, 2),
+      crossSectionalArea: pileProperties.material === 'steel' && pileProperties.wallThickness
+        ? Math.PI * ((pileProperties.diameter/2)** 2 - (pileProperties.diameter/2 - pileProperties.wallThickness) ** 2)
+        : Math.PI * Math.pow(pileProperties.diameter/2, 2),
       compressiveStress: bendingStress, // Using bending stress instead for lateral load
       allowableStress: allowableBendingStress,
       utilizationRatio: utilizationRatio,
@@ -160,22 +192,13 @@ const Index = () => {
           : "The pile is structurally inadequate for the applied lateral load. Increase the pile dimensions."
     };
 
-    // Calculate lateral capacity
-    const lateralCapacityResults = calculateLateralCapacity(
-      soilLayers,
-      pileProperties,
-      waterTableDepth,
-      forceHeight,
-      lateralSafetyFactor
-    );
-
     // Generate recommendations for lateral capacity
     const recommendations = recommendPileDimensions(
       requiredCapacity,
       soilLayers,
       waterTableDepth,
       pileProperties.materialProperties,
-      bearingSafetyFactor,
+      soilSafetyFactor,
       structuralSafetyFactor
     );
 
@@ -271,6 +294,8 @@ const Index = () => {
                         setForceHeight={setForceHeight}
                         autoLength={autoLength}
                         setAutoLength={setAutoLength}
+                        pileTopElevation={pileTopElevation}
+                        setPileTopElevation={setPileTopElevation}
                       />
                     </TabsContent>
                     
@@ -283,19 +308,19 @@ const Index = () => {
                               <h3 className="text-lg font-medium">Safety Factors</h3>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
-                                <Label htmlFor="bearingSafetyFactor">Bearing Capacity</Label>
+                                <Label htmlFor="soilSafetyFactor">Soil Parameters Safety Factor</Label>
                                 <Input 
-                                  id="bearingSafetyFactor"
+                                  id="soilSafetyFactor"
                                   type="number" 
-                                  value={bearingSafetyFactor}
-                                  onChange={(e) => setBearingSafetyFactor(parseFloat(e.target.value))}
+                                  value={soilSafetyFactor}
+                                  onChange={(e) => setSoilSafetyFactor(parseFloat(e.target.value))}
                                   min="1.0"
                                   step="0.1"
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                  Typical value: 2.0 - 3.0
+                                  Typical value: 1.5 - 2.0
                                 </p>
                               </div>
                               
@@ -306,21 +331,6 @@ const Index = () => {
                                   type="number" 
                                   value={structuralSafetyFactor}
                                   onChange={(e) => setStructuralSafetyFactor(parseFloat(e.target.value))}
-                                  min="1.0"
-                                  step="0.1"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Typical value: 1.5 - 2.0
-                                </p>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label htmlFor="lateralSafetyFactor">Lateral Capacity</Label>
-                                <Input 
-                                  id="lateralSafetyFactor"
-                                  type="number" 
-                                  value={lateralSafetyFactor}
-                                  onChange={(e) => setLateralSafetyFactor(parseFloat(e.target.value))}
                                   min="1.0"
                                   step="0.1"
                                 />
@@ -399,6 +409,7 @@ const Index = () => {
                     pileProperties={pileProperties}
                     waterTableDepth={waterTableDepth}
                     forceHeight={forceHeight}
+                    pileTopElevation={pileTopElevation}
                   />
                 </CardContent>
               </Card>

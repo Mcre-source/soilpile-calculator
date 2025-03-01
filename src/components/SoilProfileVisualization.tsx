@@ -192,6 +192,7 @@ const SoilProfileVisualization = ({
       pileFillStyle = gradient;
     }
 
+    // Fix the type issue by assigning the gradient or string as a fillStyle directly
     ctx.fillStyle = pileFillStyle;
     ctx.fillRect(pileX, pileTopY, pileWidth, totalPileHeight);
     
