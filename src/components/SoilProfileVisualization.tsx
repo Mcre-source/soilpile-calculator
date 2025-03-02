@@ -174,7 +174,7 @@ const SoilProfileVisualization = ({
     const totalPileHeight = pileEndY - pileTopY;
     
     // Pile shaft
-    let pileFillStyle = '#d3d3d3'; // Default concrete color
+    let pileFillStyle: string | CanvasGradient = '#d3d3d3'; // Default concrete color
     
     if (pileProperties.material === 'steel') {
       pileFillStyle = '#a0a0a0'; // Steel color
@@ -192,7 +192,7 @@ const SoilProfileVisualization = ({
       pileFillStyle = gradient;
     }
 
-    // Fix the type issue by assigning the gradient or string as a fillStyle directly
+    // Direct assignment of fillStyle with either string or gradient
     ctx.fillStyle = pileFillStyle;
     ctx.fillRect(pileX, pileTopY, pileWidth, totalPileHeight);
     

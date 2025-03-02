@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { SOIL_TYPES, DEFAULT_SOIL_LAYER, PILE_MATERIALS, STANDARD_PILE_DIAMETERS, SAFETY_FACTORS } from '../utils/constants';
 import { calculateAlphaMethod, calculateBetaMethod, checkStructuralCapacity, recommendPileDimensions, calculateLateralCapacity } from '../utils/calculations';
@@ -17,6 +16,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+// Define a more specific type for pile properties to include optional fields
+interface PileProperties {
+  material: string;
+  materialProperties: any; // Keep as any for simplicity
+  diameter: number;
+  length: number;
+  wallThickness?: number; // Optional wall thickness for steel piles
+  compositeMaterials?: {
+    material1: string;
+    material2: string;
+  };
+}
+
 const Index = () => {
   const { toast } = useToast();
 
@@ -27,8 +39,8 @@ const Index = () => {
     { ...DEFAULT_SOIL_LAYER, type: 'clay-medium', thickness: 10, frictionAngle: 0, cohesion: 50, unitWeight: 17 }
   ]);
 
-  // State for pile properties
-  const [pileProperties, setPileProperties] = useState({
+  // State for pile properties with proper type
+  const [pileProperties, setPileProperties] = useState<PileProperties>({
     material: 'concrete',
     materialProperties: PILE_MATERIALS[0],
     diameter: 0.6,
