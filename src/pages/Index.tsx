@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { SOIL_TYPES, DEFAULT_SOIL_LAYER, PILE_MATERIALS, STANDARD_PILE_DIAMETERS, SAFETY_FACTORS } from '../utils/constants';
 import { calculateAlphaMethod, calculateBetaMethod, checkStructuralCapacity, recommendPileDimensions, calculateLateralCapacity } from '../utils/calculations';
@@ -108,132 +109,145 @@ const Index = () => {
 
   // Calculate results
   const calculateResults = () => {
-    // Validate inputs
-    if (soilLayers.length === 0) {
-      toast({
-        title: "Error",
-        description: "At least one soil layer is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (requiredCapacity <= 0) {
-      toast({
-        title: "Error",
-        description: "Required capacity must be greater than zero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate safety factors
-    if (soilSafetyFactor < 1 || structuralSafetyFactor < 1) {
-      toast({
-        title: "Error",
-        description: "Safety factors must be greater than or equal to 1.0",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Perform calculations for lateral capacity
-    const lateralCapacityResults = calculateLateralCapacity(
-      soilLayers,
-      pileProperties,
-      waterTableDepth,
-      forceHeight,
-      soilSafetyFactor
-    );
-
-    // Generate placeholder results (no axial load applied)
-    const results = {
-      totalCapacity: 0, // No axial load
-      skinFriction: 0,  // No skin friction for lateral load
-      endBearing: 0,    // No end bearing for lateral load
-      allowableCapacity: 0, // No axial capacity for lateral load
-      calculationMethod: "Broms' Method for Lateral Loading",
-      notes: "This analysis considers lateral loading only. No axial load is applied.",
-      pileProperties: pileProperties,
-      requiredCapacity: requiredCapacity,
-      waterTableDepth: waterTableDepth,
-      forceHeight: forceHeight,
-      pileTopElevation: pileTopElevation,
-      appliedSafetyFactor: soilSafetyFactor,
-      appliedStructuralSafetyFactor: structuralSafetyFactor
-    };
-
-    // For a laterally loaded pile, we'll check bending stress
-    // This is a simplified calculation
-    const moment = requiredCapacity * (forceHeight + pileProperties.length / 3);
-    
-    // Calculate moment of inertia based on pile type
-    let momentOfInertia;
-    let maxFiberDistance;
-    
-    if (pileProperties.material === 'steel' && pileProperties.wallThickness) {
-      // For tubular steel piles
-      const outerRadius = pileProperties.diameter / 2;
-      const innerRadius = outerRadius - pileProperties.wallThickness;
-      momentOfInertia = Math.PI * (Math.pow(outerRadius, 4) - Math.pow(innerRadius, 4)) / 4;
-      maxFiberDistance = outerRadius;
-    } else {
-      // For solid piles
-      momentOfInertia = Math.PI * Math.pow(pileProperties.diameter/2, 4) / 4;
-      maxFiberDistance = pileProperties.diameter / 2;
-    }
-    
-    const bendingStress = (moment * maxFiberDistance) / momentOfInertia / 1000; // MPa
-    
-    const allowableBendingStress = pileProperties.materialProperties.yield_strength / structuralSafetyFactor;
-    const utilizationRatio = bendingStress / allowableBendingStress;
-
-    // Create a structural check result
-    const structuralResults = {
-      crossSectionalArea: pileProperties.material === 'steel' && pileProperties.wallThickness
-        ? Math.PI * ((pileProperties.diameter/2)** 2 - (pileProperties.diameter/2 - pileProperties.wallThickness) ** 2)
-        : Math.PI * Math.pow(pileProperties.diameter/2, 2),
-      compressiveStress: bendingStress, // Using bending stress instead for lateral load
-      allowableStress: allowableBendingStress,
-      utilizationRatio: utilizationRatio,
-      isAdequate: utilizationRatio <= 1.0,
-      notes: utilizationRatio <= 0.7 
-        ? "The pile has sufficient structural capacity for bending with a good safety margin."
-        : utilizationRatio <= 1.0 
-          ? "The pile has adequate structural capacity for bending, but consider increasing the size for better long-term performance."
-          : "The pile is structurally inadequate for the applied lateral load. Increase the pile dimensions."
-    };
-
-    // Generate recommendations for lateral capacity
-    const recommendations = recommendPileDimensions(
-      requiredCapacity,
-      soilLayers,
-      waterTableDepth,
-      pileProperties.materialProperties,
-      soilSafetyFactor,
-      structuralSafetyFactor
-    );
-
-    // Update state with results
-    setCalculationResults(results);
-    setStructuralCheck(structuralResults);
-    setLateralResults(lateralCapacityResults);
-    setRecommendedPiles(recommendations);
-    setShowResults(true);
-
-    // Show success toast
-    toast({
-      title: "Calculation completed",
-      description: "Pile calculation results are ready",
-    });
-
-    // Scroll to results
-    setTimeout(() => {
-      const resultsElement = document.getElementById('results-section');
-      if (resultsElement) {
-        resultsElement.scrollIntoView({ behavior: 'smooth' });
+    try {
+      // Validate inputs
+      if (soilLayers.length === 0) {
+        toast({
+          title: "Error",
+          description: "At least one soil layer is required",
+          variant: "destructive"
+        });
+        return;
       }
-    }, 100);
+
+      if (requiredCapacity <= 0) {
+        toast({
+          title: "Error",
+          description: "Required capacity must be greater than zero",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate safety factors
+      if (soilSafetyFactor < 1 || structuralSafetyFactor < 1) {
+        toast({
+          title: "Error",
+          description: "Safety factors must be greater than or equal to 1.0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Perform calculations for lateral capacity
+      const lateralCapacityResults = calculateLateralCapacity(
+        soilLayers,
+        pileProperties,
+        waterTableDepth,
+        forceHeight,
+        soilSafetyFactor
+      );
+
+      // Generate placeholder results (no axial load applied)
+      const results = {
+        totalCapacity: 0, // No axial load
+        skinFriction: 0,  // No skin friction for lateral load
+        endBearing: 0,    // No end bearing for lateral load
+        allowableCapacity: 0, // No axial capacity for lateral load
+        calculationMethod: "Broms' Method for Lateral Loading",
+        notes: "This analysis considers lateral loading only. No axial load is applied.",
+        pileProperties: pileProperties,
+        requiredCapacity: requiredCapacity,
+        waterTableDepth: waterTableDepth,
+        forceHeight: forceHeight,
+        pileTopElevation: pileTopElevation,
+        appliedSafetyFactor: soilSafetyFactor,
+        appliedStructuralSafetyFactor: structuralSafetyFactor
+      };
+
+      // For a laterally loaded pile, we'll check bending stress
+      // This is a simplified calculation
+      const moment = requiredCapacity * (forceHeight + pileProperties.length / 3);
+      
+      // Calculate moment of inertia based on pile type
+      let momentOfInertia;
+      let maxFiberDistance;
+      
+      if (pileProperties.material === 'steel' && pileProperties.wallThickness) {
+        // For tubular steel piles
+        const outerRadius = pileProperties.diameter / 2;
+        const innerRadius = outerRadius - pileProperties.wallThickness;
+        momentOfInertia = Math.PI * (Math.pow(outerRadius, 4) - Math.pow(innerRadius, 4)) / 4;
+        maxFiberDistance = outerRadius;
+      } else {
+        // For solid piles
+        momentOfInertia = Math.PI * Math.pow(pileProperties.diameter/2, 4) / 4;
+        maxFiberDistance = pileProperties.diameter / 2;
+      }
+      
+      const bendingStress = (moment * maxFiberDistance) / momentOfInertia / 1000; // MPa
+      
+      const allowableBendingStress = pileProperties.materialProperties.yield_strength / structuralSafetyFactor;
+      const utilizationRatio = bendingStress / allowableBendingStress;
+
+      // Create a structural check result
+      const structuralResults = {
+        crossSectionalArea: pileProperties.material === 'steel' && pileProperties.wallThickness
+          ? Math.PI * ((pileProperties.diameter/2)** 2 - (pileProperties.diameter/2 - pileProperties.wallThickness) ** 2)
+          : Math.PI * Math.pow(pileProperties.diameter/2, 2),
+        compressiveStress: bendingStress, // Using bending stress instead for lateral load
+        allowableStress: allowableBendingStress,
+        utilizationRatio: utilizationRatio,
+        isAdequate: utilizationRatio <= 1.0,
+        notes: utilizationRatio <= 0.7 
+          ? "The pile has sufficient structural capacity for bending with a good safety margin."
+          : utilizationRatio <= 1.0 
+            ? "The pile has adequate structural capacity for bending, but consider increasing the size for better long-term performance."
+            : "The pile is structurally inadequate for the applied lateral load. Increase the pile dimensions."
+      };
+
+      // Generate recommendations for lateral capacity
+      const recommendations = recommendPileDimensions(
+        requiredCapacity,
+        soilLayers,
+        waterTableDepth,
+        pileProperties.materialProperties,
+        soilSafetyFactor,
+        structuralSafetyFactor
+      );
+
+      console.log("Calculation completed successfully");
+      console.log("Lateral results:", lateralCapacityResults);
+      console.log("Structural check:", structuralResults);
+
+      // Update state with results
+      setCalculationResults(results);
+      setStructuralCheck(structuralResults);
+      setLateralResults(lateralCapacityResults);
+      setRecommendedPiles(recommendations);
+      setShowResults(true);
+
+      // Show success toast
+      toast({
+        title: "Calculation completed",
+        description: "Pile calculation results are ready",
+      });
+
+      // Scroll to results
+      setTimeout(() => {
+        const resultsElement = document.getElementById('results-section');
+        if (resultsElement) {
+          resultsElement.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Calculation error:", error);
+      toast({
+        title: "Calculation error",
+        description: "An error occurred during the calculation. Please check the input values.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExportToExcel = () => {
