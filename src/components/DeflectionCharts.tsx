@@ -2,223 +2,198 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-interface DeflectionChartsProps {
-  deflectionResults: {
-    deflection: any[];
-    bendingMoment: any[];
-    shearForce: any[];
-    maxDeflection: number;
-    maxBendingMoment: number;
-    maxShearForce: number;
-  };
-  pileProperties: any;
+interface DeflectionDataPoint {
+  depth: number;
+  value: number;
 }
 
-const DeflectionCharts = ({ deflectionResults, pileProperties }: DeflectionChartsProps) => {
-  if (!deflectionResults) return <div>No deflection data available</div>;
+interface DeflectionData {
+  deflection: DeflectionDataPoint[];
+  bendingMoment: DeflectionDataPoint[];
+  shearForce: DeflectionDataPoint[];
+  maxDeflection: number;
+  maxBendingMoment: number;
+  maxShearForce: number;
+  characteristicLength: number;
+  pileStiffness: number;
+  averageSoilModulus: number;
+}
 
-  // Format data for charts - we need to invert the y-axis for depths
-  // Positive deflection is to the right, negative to the left
-  const deflectionData = deflectionResults.deflection.map(point => ({
-    depth: point.depth,
-    deflection: point.value
+interface DeflectionChartsProps {
+  deflectionData: DeflectionData;
+}
+
+const formatData = (data: DeflectionDataPoint[]) => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  // Process the data to format it for the charts
+  return data.map(point => ({
+    depth: Number(point.depth.toFixed(2)),
+    value: Number(point.value.toFixed(4))
   }));
+};
 
-  // Bending moment - positive is tension on the side facing the load
-  const momentData = deflectionResults.bendingMoment.map(point => ({
-    depth: point.depth,
-    moment: point.value
-  }));
+const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) => {
+  if (!deflectionData) return null;
 
-  // Shear force - positive is upward
-  const shearData = deflectionResults.shearForce.map(point => ({
-    depth: point.depth,
-    shear: point.value
-  }));
+  const deflectionPoints = formatData(deflectionData.deflection);
+  const momentPoints = formatData(deflectionData.bendingMoment);
+  const shearPoints = formatData(deflectionData.shearForce);
 
-  // Determine axis domains with some padding
-  const maxDeflection = Math.max(Math.abs(deflectionResults.maxDeflection) * 1.2, 0.001);
-  const maxMoment = Math.max(Math.abs(deflectionResults.maxBendingMoment) * 1.2, 1);
-  const maxShear = Math.max(Math.abs(deflectionResults.maxShearForce) * 1.2, 1);
+  // Get max absolute values for scaling
+  const maxDeflection = deflectionData.maxDeflection;
+  const maxMoment = deflectionData.maxBendingMoment;
+  const maxShear = deflectionData.maxShearForce;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Pile Structural Response</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground mb-4">
-            <p>The charts below show the calculated pile response to lateral loading. These calculations use a simplified beam-on-elastic-foundation analysis with soil modeled using p-y curves derived from soil properties.</p>
-          </div>
-
-          <Tabs defaultValue="deflection" className="w-full">
-            <TabsList className="grid grid-cols-3 mb-4">
-              <TabsTrigger value="deflection">Lateral Deflection</TabsTrigger>
-              <TabsTrigger value="moment">Bending Moment</TabsTrigger>
-              <TabsTrigger value="shear">Shear Force</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="deflection">
-              <div className="p-4 border rounded-md">
-                <div className="flex justify-between mb-2">
-                  <h3 className="font-medium">Lateral Deflection</h3>
-                  <span className="text-sm">Max: {deflectionResults.maxDeflection.toFixed(3)} m</span>
-                </div>
-
-                <div className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={deflectionData}
-                      margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="deflection" 
-                        type="number"
-                        domain={[-maxDeflection, maxDeflection]}
-                        label={{ value: 'Deflection (m)', position: 'bottom', offset: 0 }}
-                      />
-                      <YAxis 
-                        dataKey="depth" 
-                        reversed={true}
-                        domain={[0, 'auto']}
-                        label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip 
-                        formatter={(value, name) => [`${Number(value).toFixed(4)} m`, 'Deflection']}
-                        labelFormatter={(label) => `Depth: ${Number(label).toFixed(2)} m`}
-                      />
-                      <ReferenceLine x={0} stroke="#888" />
-                      <Line 
-                        type="monotone" 
-                        dataKey="deflection" 
-                        stroke="#8884d8" 
-                        activeDot={{ r: 8 }} 
-                        dot={false}
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  <p>Positive values indicate deflection in the direction of the applied load. The maximum allowable deflection for typical structures is often limited to 1% of the pile diameter.</p>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="moment">
-              <div className="p-4 border rounded-md">
-                <div className="flex justify-between mb-2">
-                  <h3 className="font-medium">Bending Moment Diagram</h3>
-                  <span className="text-sm">Max: {deflectionResults.maxBendingMoment.toFixed(1)} kN·m</span>
-                </div>
-
-                <div className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={momentData}
-                      margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="moment" 
-                        type="number"
-                        domain={[-maxMoment, maxMoment]}
-                        label={{ value: 'Bending Moment (kN·m)', position: 'bottom', offset: 0 }}
-                      />
-                      <YAxis 
-                        dataKey="depth" 
-                        reversed={true}
-                        domain={[0, 'auto']}
-                        label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip 
-                        formatter={(value, name) => [`${Number(value).toFixed(2)} kN·m`, 'Bending Moment']}
-                        labelFormatter={(label) => `Depth: ${Number(label).toFixed(2)} m`}
-                      />
-                      <ReferenceLine x={0} stroke="#888" />
-                      <Line 
-                        type="monotone" 
-                        dataKey="moment" 
-                        stroke="#82ca9d" 
-                        activeDot={{ r: 8 }} 
-                        dot={false}
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  <p>Positive values indicate tension on the loaded face of the pile. The maximum bending moment determines the required structural capacity of the pile section.</p>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="shear">
-              <div className="p-4 border rounded-md">
-                <div className="flex justify-between mb-2">
-                  <h3 className="font-medium">Shear Force Diagram</h3>
-                  <span className="text-sm">Max: {deflectionResults.maxShearForce.toFixed(1)} kN</span>
-                </div>
-
-                <div className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={shearData}
-                      margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="shear" 
-                        type="number"
-                        domain={[-maxShear, maxShear]}
-                        label={{ value: 'Shear Force (kN)', position: 'bottom', offset: 0 }}
-                      />
-                      <YAxis 
-                        dataKey="depth" 
-                        reversed={true}
-                        domain={[0, 'auto']}
-                        label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
-                      />
-                      <Tooltip 
-                        formatter={(value, name) => [`${Number(value).toFixed(2)} kN`, 'Shear Force']}
-                        labelFormatter={(label) => `Depth: ${Number(label).toFixed(2)} m`}
-                      />
-                      <ReferenceLine x={0} stroke="#888" />
-                      <Line 
-                        type="monotone" 
-                        dataKey="shear" 
-                        stroke="#ff7300" 
-                        activeDot={{ r: 8 }} 
-                        dot={false}
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  <p>The shear force diagram represents the internal shear in the pile. The derivative of the bending moment diagram gives the shear force distribution.</p>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-6 p-4 bg-muted rounded-md text-sm">
-            <h3 className="font-medium mb-2">Key Observations:</h3>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Maximum deflection occurs at or near the ground surface</li>
-              <li>Maximum bending moment typically occurs below the ground surface</li>
-              <li>Pile exhibits fixed-head behavior with rotation constrained at the top</li>
-              <li>No axial load is applied in this analysis</li>
-              <li>Actual behavior may differ based on installation conditions and soil variability</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Pile Response Analysis</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="deflection" className="w-full">
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="deflection">Deflection</TabsTrigger>
+            <TabsTrigger value="moment">Bending Moment</TabsTrigger>
+            <TabsTrigger value="shear">Shear Force</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="deflection">
+            <div className="h-80 py-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={deflectionPoints}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="value"
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Deflection (m)', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    reversed
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value.toFixed(6)} m`, 'Deflection']}
+                    labelFormatter={(label: any) => `Depth: ${label} m`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    name="Deflection" 
+                    stroke="#8884d8" 
+                    dot={false} 
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-sm mt-2">
+              <p>Maximum Deflection: {maxDeflection.toExponential(4)} m</p>
+              <p className="text-xs text-gray-500 mt-1">
+                This graph shows the lateral deflection of the pile as a function of depth.
+                Positive values indicate deflection in the direction of the applied load.
+              </p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="moment">
+            <div className="h-80 py-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={momentPoints}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="value"
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Bending Moment (kN·m)', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    reversed
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value.toFixed(2)} kN·m`, 'Bending Moment']}
+                    labelFormatter={(label: any) => `Depth: ${label} m`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    name="Moment" 
+                    stroke="#82ca9d" 
+                    dot={false} 
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-sm mt-2">
+              <p>Maximum Bending Moment: {maxMoment.toFixed(2)} kN·m</p>
+              <p className="text-xs text-gray-500 mt-1">
+                This graph shows the bending moment in the pile as a function of depth.
+                Positive values indicate tension on the side facing the applied load.
+              </p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="shear">
+            <div className="h-80 py-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={shearPoints}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="value"
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Shear Force (kN)', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    reversed
+                    domain={['dataMin', 'dataMax']}
+                    label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value.toFixed(2)} kN`, 'Shear Force']}
+                    labelFormatter={(label: any) => `Depth: ${label} m`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    name="Shear" 
+                    stroke="#ff7300" 
+                    dot={false} 
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-sm mt-2">
+              <p>Maximum Shear Force: {maxShear.toFixed(2)} kN</p>
+              <p className="text-xs text-gray-500 mt-1">
+                This graph shows the shear force in the pile as a function of depth.
+                Positive values indicate shear in the direction of the applied load.
+              </p>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { SOIL_TYPES, DEFAULT_SOIL_LAYER, PILE_MATERIALS, STANDARD_PILE_DIAMETERS, SAFETY_FACTORS } from '../utils/constants';
 import { calculateAlphaMethod, calculateBetaMethod, checkStructuralCapacity, recommendPileDimensions, calculateLateralCapacity } from '../utils/calculations';
+import { calculatePileDeflection } from '../utils/calculations/pileDeflection';
 import { exportToExcel } from '../utils/excelExport';
 import SoilLayerInput from '../components/SoilLayerInput';
 import PileInput from '../components/PileInput';
 import CalculationResults from '../components/CalculationResults';
 import SoilProfileVisualization from '../components/SoilProfileVisualization';
+import DeflectionCharts from '../components/DeflectionCharts';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +63,7 @@ const Index = () => {
   const [lateralResults, setLateralResults] = useState(null);
   const [recommendedPiles, setRecommendedPiles] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [deflectionData, setDeflectionData] = useState(null);
 
   useEffect(() => {
     if (autoLength && pileProperties.diameter && requiredCapacity > 0) {
@@ -135,6 +138,17 @@ const Index = () => {
       );
       
       console.log("Lateral capacity results:", lateralCapacityResults);
+
+      const pileDeflectionResults = calculatePileDeflection(
+        soilLayers,
+        pileProperties,
+        waterTableDepth,
+        forceHeight,
+        requiredCapacity,
+        pileTopElevation
+      );
+      
+      console.log("Pile deflection results:", pileDeflectionResults);
 
       const results = {
         totalCapacity: 0,
@@ -212,11 +226,13 @@ const Index = () => {
       console.log("Lateral results:", lateralCapacityResults);
       console.log("Structural check:", structuralResults);
       console.log("Recommendations:", recommendations);
+      console.log("Deflection data:", pileDeflectionResults);
 
       setCalculationResults(results);
       setStructuralCheck(structuralResults);
       setLateralResults(lateralCapacityResults);
       setRecommendedPiles(recommendations);
+      setDeflectionData(pileDeflectionResults);
       setShowResults(true);
 
       toast({
@@ -444,6 +460,7 @@ const Index = () => {
                 structuralCheck={structuralCheck}
                 lateralResults={lateralResults}
                 recommendedPiles={recommendedPiles}
+                deflectionData={deflectionData}
               />
             </div>
           )}
