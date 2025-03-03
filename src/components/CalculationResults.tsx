@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,19 +6,22 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, Ruler } from 'lucide-react';
 import { SAFETY_FACTORS } from '../utils/constants';
+import DeflectionCharts from './DeflectionCharts';
 
 interface CalculationResultsProps {
   calculationResults: any;
   structuralCheck: any;
   lateralResults: any;
   recommendedPiles: any[];
+  deflectionData: any;
 }
 
 export default function CalculationResults({ 
   calculationResults, 
   structuralCheck, 
   lateralResults,
-  recommendedPiles 
+  recommendedPiles,
+  deflectionData
 }: CalculationResultsProps) {
   
   // Format number with units
@@ -210,6 +212,10 @@ export default function CalculationResults({
         </TabsContent>
         
         <TabsContent value="details" className="space-y-4">
+          {deflectionData && (
+            <DeflectionCharts deflectionData={deflectionData} />
+          )}
+          
           <Card>
             <CardHeader>
               <CardTitle>Axial Capacity Calculation</CardTitle>
