@@ -218,55 +218,6 @@ export default function CalculationResults({
           
           <Card>
             <CardHeader>
-              <CardTitle>Axial Capacity Calculation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 border rounded-md">
-                    <h3 className="font-semibold mb-2">Skin Friction</h3>
-                    <p className="text-2xl font-bold">{formatNumber(calculationResults.skinFriction, 'kN')}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Calculated along the full pile length through all soil layers
-                    </p>
-                  </div>
-                  
-                  <div className="p-4 border rounded-md">
-                    <h3 className="font-semibold mb-2">End Bearing</h3>
-                    <p className="text-2xl font-bold">{formatNumber(calculationResults.endBearing, 'kN')}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Calculated at the pile tip based on the bottom layer properties
-                    </p>
-                  </div>
-                  
-                  <div className="p-4 border rounded-md">
-                    <h3 className="font-semibold mb-2">Total Ultimate Capacity</h3>
-                    <p className="text-2xl font-bold">{formatNumber(calculationResults.totalCapacity, 'kN')}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Sum of skin friction and end bearing capacities
-                    </p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <h3 className="font-semibold mb-3">Calculation Steps</h3>
-                  <div className="space-y-2">
-                    {calculationResults.calculationSteps.map((step: any, index: number) => (
-                      <div key={index} className="calculation-step">
-                        <p className="font-medium">Layer at {step.depth}</p>
-                        <p className="text-sm">{step.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
               <CardTitle>Structural Capacity Verification</CardTitle>
             </CardHeader>
             <CardContent>
