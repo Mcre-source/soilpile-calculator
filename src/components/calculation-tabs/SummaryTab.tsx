@@ -58,7 +58,7 @@ export default function SummaryTab({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center justify-between">
-              Axial Capacity
+              Lateral Capacity
               <Badge variant={capacityStatus.status === 'success' ? "default" : capacityStatus.status === 'warning' ? "outline" : "destructive"}>
                 {capacityStatus.text}
               </Badge>
@@ -68,11 +68,11 @@ export default function SummaryTab({
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Required Capacity:</span>
+                  <span>Required Lateral Capacity:</span>
                   <span className="font-medium">{formatNumber(calculationResults.requiredCapacity, 'kN')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Allowable Capacity:</span>
+                  <span>Allowable Lateral Capacity:</span>
                   <span className="font-medium">{formatNumber(calculationResults.allowableCapacity, 'kN')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -95,7 +95,7 @@ export default function SummaryTab({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center justify-between">
-              Structural Capacity
+              Pile Bending Strength
               <Badge variant={utilizationStatus.status === 'success' ? "default" : utilizationStatus.status === 'warning' ? "outline" : "destructive"}>
                 {utilizationStatus.text}
               </Badge>
@@ -105,7 +105,7 @@ export default function SummaryTab({
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Compressive Stress:</span>
+                  <span>Bending Stress:</span>
                   <span className="font-medium">{formatNumber(structuralCheck.compressiveStress, 'MPa')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
