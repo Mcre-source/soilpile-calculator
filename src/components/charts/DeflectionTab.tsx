@@ -18,6 +18,16 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
   maxDeflection, 
   pileLength 
 }) => {
+  // Calculate appropriate x-axis domain for deflection values
+  // Find the min and max values, then add a small buffer for readability
+  const values = deflectionPoints.map(p => p.value);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  
+  // Calculate domain with 10% padding on each side for better visibility
+  const padding = Math.max(Math.abs(maxValue - minValue) * 0.1, 0.000001); // Ensure minimal padding for very small values
+  const xAxisDomain = [minValue - padding, maxValue + padding];
+
   return (
     <>
       <PileResponseChart
@@ -27,6 +37,7 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
         valueName="Deflection"
         color="#8884d8"
         pileLength={pileLength}
+        xAxisDomain={xAxisDomain}
       />
       <div className="text-sm mt-2">
         <p>Maximum Deflection: {maxDeflection.toExponential(4)} m</p>

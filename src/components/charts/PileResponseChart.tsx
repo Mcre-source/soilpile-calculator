@@ -15,6 +15,8 @@ interface PileResponseChartProps {
   valueName: string;
   color: string;
   pileLength: number;
+  // Add optional prop for custom domain
+  xAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
 }
 
 const PileResponseChart: React.FC<PileResponseChartProps> = ({
@@ -23,7 +25,9 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   xUnit,
   valueName,
   color,
-  pileLength
+  pileLength,
+  // Default to dataMin/dataMax if not provided
+  xAxisDomain = ['dataMin', 'dataMax']
 }) => {
   // Set the Y-axis domain to show from ground level (0) to the pile length
   const minDepth = 0;
@@ -48,8 +52,16 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
           <XAxis 
             dataKey="value"
             type="number"
-            domain={['dataMin', 'dataMax']}
+            domain={xAxisDomain}
             label={{ value: `${xLabel} (${xUnit})`, position: 'insideBottom', offset: -5 }}
+            // Add tickFormatter for better readability of small values
+            tickFormatter={(value) => {
+              // Use exponential notation for very small numbers
+              if (Math.abs(value) < 0.001) {
+                return value.toExponential(2);
+              }
+              return value.toFixed(Math.abs(value) < 0.1 ? 4 : 2);
+            }}
           />
           <YAxis 
             reversed
@@ -57,7 +69,14 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
           />
           <Tooltip 
-            formatter={(value: number) => [`${typeof value === 'number' ? value.toFixed(6) : value} ${xUnit}`, valueName]}
+            formatter={(value: number) => [
+              `${typeof value === 'number' 
+                ? (Math.abs(value) < 0.001 
+                  ? value.toExponential(6) 
+                  : value.toFixed(6)) 
+                : value} ${xUnit}`, 
+              valueName
+            ]}
             labelFormatter={(label: any) => `Depth: ${label} m`}
           />
           <Legend content={() => <PileIcon />} />
