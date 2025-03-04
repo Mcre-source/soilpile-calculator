@@ -1,4 +1,3 @@
-
 // Calculate pile deflection, bending moment, and shear force
 export const calculatePileDeflection = (
   soilLayers: any[],
@@ -56,8 +55,8 @@ export const calculatePileDeflection = (
     return soilModulus; // kPa
   };
   
-  // Generate points for analysis
-  const numPoints = 100;
+  // Generate points for analysis - ensure enough points to accurately represent the pile length
+  const numPoints = Math.max(100, pileLength * 10); // More points for better resolution
   const depthIncrement = totalPileLength / (numPoints - 1);
   
   // Initialize arrays for results
@@ -95,6 +94,10 @@ export const calculatePileDeflection = (
   // Calculate deflection, bending moment, and shear force at each point
   for (let i = 0; i < numPoints; i++) {
     const depth = i * depthIncrement;
+    
+    // Skip points beyond pile length + a small buffer for visualization
+    if (depth > totalPileLength + 0.1) continue;
+    
     let deflection, bendingMoment, shearForce;
     
     // Depth from ground surface (negative above ground)

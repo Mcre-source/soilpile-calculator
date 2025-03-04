@@ -2,7 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { RectangleVertical } from 'lucide-react';
 
 interface DeflectionDataPoint {
   depth: number;
@@ -23,33 +24,56 @@ interface DeflectionData {
 
 interface DeflectionChartsProps {
   deflectionData: DeflectionData;
+  pileProperties?: { 
+    length: number;
+    diameter: number;
+  };
 }
 
-const formatData = (data: DeflectionDataPoint[]) => {
+const formatData = (data: DeflectionDataPoint[], pileLength?: number) => {
   if (!data || !Array.isArray(data)) return [];
   
   // Process the data to format it for the charts
-  return data.map(point => ({
+  // If pile length is provided, filter data to only include points within the pile length
+  const formattedData = data.map(point => ({
     depth: Number(point.depth.toFixed(2)),
     value: Number(point.value.toFixed(4))
   }));
+
+  if (pileLength) {
+    return formattedData.filter(point => point.depth <= pileLength);
+  }
+  
+  return formattedData;
 };
 
-const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) => {
+const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData, pileProperties }) => {
   if (!deflectionData) return null;
 
-  const deflectionPoints = formatData(deflectionData.deflection);
-  const momentPoints = formatData(deflectionData.bendingMoment);
-  const shearPoints = formatData(deflectionData.shearForce);
+  // Get the pile length, default to max depth if not provided
+  const pileLength = pileProperties?.length || 0;
+  
+  // Filter data to only include points within the pile length
+  const deflectionPoints = formatData(deflectionData.deflection, pileLength);
+  const momentPoints = formatData(deflectionData.bendingMoment, pileLength);
+  const shearPoints = formatData(deflectionData.shearForce, pileLength);
 
   // Get max absolute values for scaling
   const maxDeflection = deflectionData.maxDeflection;
   const maxMoment = deflectionData.maxBendingMoment;
   const maxShear = deflectionData.maxShearForce;
 
-  // Calculate the min and max depths for Y-axis domain
-  const minDepth = Math.min(...deflectionPoints.map(p => p.depth));
-  const maxDepth = Math.max(...deflectionPoints.map(p => p.depth));
+  // Set the Y-axis domain to show from ground level (0) to the pile length
+  const minDepth = 0;
+  const maxDepth = pileLength > 0 ? pileLength : Math.max(...deflectionPoints.map(p => p.depth));
+
+  // Custom Pile Icon component to show in the legend
+  const PileIcon = () => (
+    <div className="flex items-center">
+      <RectangleVertical className="w-4 h-4 mr-1" />
+      <span>Pile Length ({pileLength}m)</span>
+    </div>
+  );
 
   return (
     <Card>
@@ -87,7 +111,13 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                     formatter={(value: number) => [`${value.toFixed(6)} m`, 'Deflection']}
                     labelFormatter={(label: any) => `Depth: ${label} m`}
                   />
-                  <Legend />
+                  <Legend content={() => <PileIcon />} />
+                  <ReferenceLine
+                    y={pileLength}
+                    stroke="#333"
+                    strokeDasharray="3 3"
+                    label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
+                  />
                   <Line 
                     type="monotone" 
                     dataKey="value" 
@@ -131,7 +161,13 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                     formatter={(value: number) => [`${value.toFixed(2)} kN·m`, 'Bending Moment']}
                     labelFormatter={(label: any) => `Depth: ${label} m`}
                   />
-                  <Legend />
+                  <Legend content={() => <PileIcon />} />
+                  <ReferenceLine
+                    y={pileLength}
+                    stroke="#333"
+                    strokeDasharray="3 3"
+                    label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
+                  />
                   <Line 
                     type="monotone" 
                     dataKey="value" 
@@ -175,7 +211,13 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                     formatter={(value: number) => [`${value.toFixed(2)} kN`, 'Shear Force']}
                     labelFormatter={(label: any) => `Depth: ${label} m`}
                   />
-                  <Legend />
+                  <Legend content={() => <PileIcon />} />
+                  <ReferenceLine
+                    y={pileLength}
+                    stroke="#333"
+                    strokeDasharray="3 3"
+                    label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
+                  />
                   <Line 
                     type="monotone" 
                     dataKey="value" 
