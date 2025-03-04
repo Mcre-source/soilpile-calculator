@@ -47,6 +47,10 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
   const maxMoment = deflectionData.maxBendingMoment;
   const maxShear = deflectionData.maxShearForce;
 
+  // Calculate the min and max depths for Y-axis domain
+  const minDepth = Math.min(...deflectionPoints.map(p => p.depth));
+  const maxDepth = Math.max(...deflectionPoints.map(p => p.depth));
+
   return (
     <Card>
       <CardHeader>
@@ -76,7 +80,7 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                   />
                   <YAxis 
                     reversed
-                    domain={['dataMin', 'dataMax']}
+                    domain={[minDepth, maxDepth]}
                     label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
                   />
                   <Tooltip 
@@ -120,7 +124,7 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                   />
                   <YAxis 
                     reversed
-                    domain={['dataMin', 'dataMax']}
+                    domain={[minDepth, maxDepth]}
                     label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
                   />
                   <Tooltip 
@@ -164,7 +168,7 @@ const DeflectionCharts: React.FC<DeflectionChartsProps> = ({ deflectionData }) =
                   />
                   <YAxis 
                     reversed
-                    domain={['dataMin', 'dataMax']}
+                    domain={[minDepth, maxDepth]}
                     label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
                   />
                   <Tooltip 
