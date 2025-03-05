@@ -18,17 +18,6 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
   maxDeflection, 
   pileLength 
 }) => {
-  // Calculate appropriate x-axis domain for deflection values
-  // Find the min and max values, then add a small buffer for readability
-  const values = deflectionPoints.map(p => p.value);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  
-  // Calculate domain with padding on each side for better visibility
-  // Using a larger padding factor for deflection to make it more visible
-  const padding = Math.max(Math.abs(maxValue - minValue) * 0.5, 0.000001); // Increased padding for better visualization
-  const xAxisDomain: [number, number] = [minValue - padding, maxValue + padding];
-
   // Create a separate series of points to visualize the undeflected pile (vertical line)
   const undeflectedPoints = deflectionPoints.map(point => ({
     depth: point.depth,
@@ -46,6 +35,17 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
     value: point.value * scaleFactor,
     originalValue: point.value // Keep original value for tooltips
   }));
+
+  // Calculate appropriate x-axis domain for deflection values
+  // Find the min and max values, then add a small buffer for readability
+  const values = scaledDeflectionPoints.map(p => p.value);
+  const minValue = Math.min(...values, 0); // Ensure we include zero 
+  const maxValue = Math.max(...values, 0); // Ensure we include zero
+  
+  // Calculate domain with padding on each side for better visibility
+  // Using a smaller padding factor to ensure values stay within bounds
+  const padding = (maxValue - minValue) * 0.2; // Reduced padding to prevent overflow
+  const xAxisDomain: [number, number] = [minValue - padding, maxValue + padding];
 
   return (
     <>

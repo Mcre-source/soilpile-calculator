@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { RectangleVertical } from 'lucide-react';
@@ -89,6 +88,8 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
                 }
                 return value.toFixed(Math.abs(value) < 0.1 ? 4 : 2);
               }}
+              // Ensure the chart doesn't display values outside the axis domain
+              allowDataOverflow={false}
             />
             <YAxis 
               dataKey="depth"
@@ -96,10 +97,15 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
               reversed
               domain={[minDepth, maxDepth]}
               label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
+              // Ensure the chart doesn't display values outside the axis domain
+              allowDataOverflow={false}
             />
             <Tooltip 
               formatter={customFormatter}
               labelFormatter={(label: any) => `Depth: ${label} m`}
+              // Keep tooltips within the chart area
+              coordinate={{ x: 0, y: 0 }}
+              cursor={{ stroke: '#ccc', strokeWidth: 1 }}
             />
             <Legend content={() => <PileIcon />} />
             <ReferenceLine
@@ -129,7 +135,8 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
                 stroke="#888" 
                 strokeWidth={1.5}
                 strokeDasharray="5 5"
-                dot={false} 
+                dot={false}
+                isAnimationActive={false}
               />
             )}
             
@@ -141,6 +148,8 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
               strokeWidth={2}
               dot={{ r: 4 }}
               activeDot={{ r: 6 }}
+              isAnimationActive={false}
+              connectNulls={true}
             />
           </LineChart>
         </ResponsiveContainer>
