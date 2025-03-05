@@ -37,9 +37,10 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
 
   // Calculate scale factor to exaggerate deflection for visualization
   // This makes small deflections visible in the chart
-  const scaleFactor = Math.max(1, 0.2 / maxDeflection); // Adjust scale for very small deflections
+  const scaleFactor = Math.max(1, 50 / maxDeflection); // Apply stronger scaling factor
   
   // Create scaled deflection points for visualization
+  // This creates the curved pile effect by offsetting each point by its deflection
   const scaledDeflectionPoints = deflectionPoints.map(point => ({
     depth: point.depth,
     value: point.value * scaleFactor,
@@ -50,23 +51,24 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
     <>
       <PileResponseChart
         data={scaledDeflectionPoints}
-        xLabel="Deflection"
+        xLabel="Lateral Displacement"
         xUnit="m"
-        valueName="Deflection"
+        valueName="Displacement"
         color="#8884d8"
         pileLength={pileLength}
         xAxisDomain={xAxisDomain}
         showUndeflectedPile={true}
         undeflectedPoints={undeflectedPoints}
         scaleFactor={scaleFactor}
+        horizontalLayout={true}
       />
       <div className="text-sm mt-2">
-        <p>Maximum Deflection: {maxDeflection.toExponential(4)} m</p>
+        <p>Maximum Lateral Displacement: {maxDeflection.toExponential(4)} m</p>
         <p className="text-xs text-gray-500 mt-1">
-          This graph shows the lateral deflection of the pile as a function of depth.
-          Positive values indicate deflection in the direction of the applied load.
+          This graph shows the lateral displacement of the pile as a function of depth.
+          Positive values indicate displacement in the direction of the applied load.
           <br />
-          <span className="italic">Note: Deflection has been scaled by a factor of {scaleFactor.toFixed(1)}x for better visualization.</span>
+          <span className="italic">Note: Displacement has been scaled by a factor of {scaleFactor.toFixed(1)}x for better visualization.</span>
         </p>
       </div>
     </>
