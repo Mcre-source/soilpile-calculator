@@ -1,6 +1,4 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 interface AssumptionsTabProps {
   calculationResults: any;
   safetyFactors: {
@@ -9,13 +7,11 @@ interface AssumptionsTabProps {
     sliding: number;
   };
 }
-
-export default function AssumptionsTab({ 
+export default function AssumptionsTab({
   calculationResults,
   safetyFactors
 }: AssumptionsTabProps) {
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Calculation Assumptions</CardTitle>
@@ -37,19 +33,14 @@ export default function AssumptionsTab({
             <div className="p-4 border rounded-md">
               <h3 className="font-semibold mb-2">Method-Specific Assumptions</h3>
               <ul className="list-disc list-inside space-y-1 text-sm">
-                {calculationResults.assumptions.map((assumption: string, index: number) => (
-                  <li key={index}>{assumption}</li>
-                ))}
+                {calculationResults.assumptions.map((assumption: string, index: number) => <li key={index}>{assumption}</li>)}
               </ul>
             </div>
             
             <div className="p-4 border rounded-md">
               <h3 className="font-semibold mb-2">Safety Factors</h3>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Bearing Capacity:</span>
-                  <span className="font-medium">{calculationResults.appliedSafetyFactor}</span>
-                </div>
+                
                 <div className="flex justify-between">
                   <span>Structural Capacity:</span>
                   <span className="font-medium">{calculationResults.appliedStructuralSafetyFactor || safetyFactors.structural}</span>
@@ -74,6 +65,5 @@ export default function AssumptionsTab({
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
