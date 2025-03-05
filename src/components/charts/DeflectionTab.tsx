@@ -52,7 +52,7 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
       <PileResponseChart
         data={scaledDeflectionPoints}
         xLabel="Lateral Displacement"
-        xUnit="m"
+        xUnit="mm"
         valueName="Displacement"
         color="#8884d8"
         pileLength={pileLength}
@@ -61,9 +61,10 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
         undeflectedPoints={undeflectedPoints}
         scaleFactor={scaleFactor}
         horizontalLayout={true}
+        invertYAxis={false} // Set to false to have top of pile at top of chart
       />
       <div className="text-sm mt-2">
-        <p>Maximum Lateral Displacement: {maxDeflection.toExponential(4)} m</p>
+        <p>Maximum Lateral Displacement: {(maxDeflection * 1000).toFixed(2)} mm</p>
         <p className="text-xs text-gray-500 mt-1">
           This graph shows the lateral displacement of the pile as a function of depth.
           Positive values indicate displacement in the direction of the applied load.

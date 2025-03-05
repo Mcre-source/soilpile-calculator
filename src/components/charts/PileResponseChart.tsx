@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { RectangleVertical } from 'lucide-react';
@@ -23,6 +24,8 @@ interface PileResponseChartProps {
   scaleFactor?: number;
   // Add prop for horizontal layout (deflection-specific)
   horizontalLayout?: boolean;
+  // Add prop for y-axis orientation
+  invertYAxis?: boolean;
 }
 
 const PileResponseChart: React.FC<PileResponseChartProps> = ({
@@ -37,7 +40,8 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   showUndeflectedPile = false,
   undeflectedPoints = [],
   scaleFactor = 1,
-  horizontalLayout = false
+  horizontalLayout = false,
+  invertYAxis = true
 }) => {
   // Set the Y-axis domain to show from ground level (0) to the pile length
   const minDepth = 0;
@@ -55,7 +59,9 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   const customFormatter = (value: number, name: string, props: any) => {
     if (props.payload.originalValue !== undefined) {
       // If we have an original value (for scaled deflection), show that
-      return [`${props.payload.originalValue.toExponential(4)} ${xUnit}`, valueName];
+      // Convert from meters to mm for display
+      const displayValue = props.payload.originalValue * 1000;
+      return [`${displayValue.toFixed(2)} ${xUnit}`, valueName];
     }
     
     // For non-scaled values, format as before
@@ -82,11 +88,13 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
               label={{ value: `${xLabel} (${xUnit})${scaleFactor > 1 ? ` (scaled ${scaleFactor.toFixed(1)}x)` : ''}`, position: 'insideBottom', offset: -5 }}
               // Add tickFormatter for better readability of small values
               tickFormatter={(value) => {
+                // Display values in mm for readability
+                const displayValue = value * (xUnit === 'mm' ? 1 : 1000);
                 // Use exponential notation for very small numbers
-                if (Math.abs(value) < 0.001) {
-                  return value.toExponential(2);
+                if (Math.abs(displayValue) < 0.001) {
+                  return displayValue.toExponential(2);
                 }
-                return value.toFixed(Math.abs(value) < 0.1 ? 4 : 2);
+                return displayValue.toFixed(Math.abs(displayValue) < 0.1 ? 2 : 1);
               }}
               // Ensure the chart doesn't display values outside the axis domain
               allowDataOverflow={false}
@@ -94,7 +102,7 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             <YAxis 
               dataKey="depth"
               type="number"
-              reversed
+              reversed={invertYAxis} // Use the invertYAxis prop to control orientation
               domain={[minDepth, maxDepth]}
               label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
               // Ensure the chart doesn't display values outside the axis domain
@@ -181,7 +189,7 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             }}
           />
           <YAxis 
-            reversed
+            reversed={invertYAxis}
             domain={[minDepth, maxDepth]}
             label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
           />
