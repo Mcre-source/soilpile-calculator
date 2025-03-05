@@ -26,7 +26,7 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
   
   // Calculate domain with 10% padding on each side for better visibility
   const padding = Math.max(Math.abs(maxValue - minValue) * 0.1, 0.000001); // Ensure minimal padding for very small values
-  const xAxisDomain = [minValue - padding, maxValue + padding];
+  const xAxisDomain: [number, number] = [minValue - padding, maxValue + padding];
 
   return (
     <>
