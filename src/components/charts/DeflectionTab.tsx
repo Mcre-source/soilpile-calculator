@@ -24,26 +24,49 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
   const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
   
-  // Calculate domain with 10% padding on each side for better visibility
-  const padding = Math.max(Math.abs(maxValue - minValue) * 0.1, 0.000001); // Ensure minimal padding for very small values
+  // Calculate domain with padding on each side for better visibility
+  // Using a larger padding factor for deflection to make it more visible
+  const padding = Math.max(Math.abs(maxValue - minValue) * 0.5, 0.000001); // Increased padding for better visualization
   const xAxisDomain: [number, number] = [minValue - padding, maxValue + padding];
+
+  // Create a separate series of points to visualize the undeflected pile (vertical line)
+  const undeflectedPoints = deflectionPoints.map(point => ({
+    depth: point.depth,
+    value: 0 // Zero deflection represents the original pile position
+  }));
+
+  // Calculate scale factor to exaggerate deflection for visualization
+  // This makes small deflections visible in the chart
+  const scaleFactor = Math.max(1, 0.2 / maxDeflection); // Adjust scale for very small deflections
+  
+  // Create scaled deflection points for visualization
+  const scaledDeflectionPoints = deflectionPoints.map(point => ({
+    depth: point.depth,
+    value: point.value * scaleFactor,
+    originalValue: point.value // Keep original value for tooltips
+  }));
 
   return (
     <>
       <PileResponseChart
-        data={deflectionPoints}
+        data={scaledDeflectionPoints}
         xLabel="Deflection"
         xUnit="m"
         valueName="Deflection"
         color="#8884d8"
         pileLength={pileLength}
         xAxisDomain={xAxisDomain}
+        showUndeflectedPile={true}
+        undeflectedPoints={undeflectedPoints}
+        scaleFactor={scaleFactor}
       />
       <div className="text-sm mt-2">
         <p>Maximum Deflection: {maxDeflection.toExponential(4)} m</p>
         <p className="text-xs text-gray-500 mt-1">
           This graph shows the lateral deflection of the pile as a function of depth.
           Positive values indicate deflection in the direction of the applied load.
+          <br />
+          <span className="italic">Note: Deflection has been scaled by a factor of {scaleFactor.toFixed(1)}x for better visualization.</span>
         </p>
       </div>
     </>

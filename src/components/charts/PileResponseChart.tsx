@@ -6,6 +6,7 @@ import { RectangleVertical } from 'lucide-react';
 interface DataPoint {
   depth: number;
   value: number;
+  originalValue?: number;
 }
 
 interface PileResponseChartProps {
@@ -17,6 +18,10 @@ interface PileResponseChartProps {
   pileLength: number;
   // Add optional prop for custom domain
   xAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
+  // Add props for undeflected pile visualization
+  showUndeflectedPile?: boolean;
+  undeflectedPoints?: DataPoint[];
+  scaleFactor?: number;
 }
 
 const PileResponseChart: React.FC<PileResponseChartProps> = ({
@@ -27,7 +32,10 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   color,
   pileLength,
   // Default to dataMin/dataMax if not provided
-  xAxisDomain = ['dataMin', 'dataMax']
+  xAxisDomain = ['dataMin', 'dataMax'],
+  showUndeflectedPile = false,
+  undeflectedPoints = [],
+  scaleFactor = 1
 }) => {
   // Set the Y-axis domain to show from ground level (0) to the pile length
   const minDepth = 0;
@@ -41,6 +49,20 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
     </div>
   );
 
+  // Custom tooltip formatter to show original values when scaled
+  const customFormatter = (value: number, name: string, props: any) => {
+    if (props.payload.originalValue !== undefined) {
+      // If we have an original value (for scaled deflection), show that
+      return [`${props.payload.originalValue.toExponential(4)} ${xUnit}`, valueName];
+    }
+    
+    // For non-scaled values, format as before
+    if (Math.abs(value) < 0.001) {
+      return [`${value.toExponential(4)} ${xUnit}`, name];
+    }
+    return [`${value.toFixed(6)} ${xUnit}`, name];
+  };
+
   return (
     <div className="h-80 py-4">
       <ResponsiveContainer width="100%" height="100%">
@@ -53,7 +75,7 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             dataKey="value"
             type="number"
             domain={xAxisDomain}
-            label={{ value: `${xLabel} (${xUnit})`, position: 'insideBottom', offset: -5 }}
+            label={{ value: `${xLabel} (${xUnit})${scaleFactor > 1 ? ` (scaled ${scaleFactor.toFixed(1)}x)` : ''}`, position: 'insideBottom', offset: -5 }}
             // Add tickFormatter for better readability of small values
             tickFormatter={(value) => {
               // Use exponential notation for very small numbers
@@ -69,14 +91,7 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
           />
           <Tooltip 
-            formatter={(value: number) => [
-              `${typeof value === 'number' 
-                ? (Math.abs(value) < 0.001 
-                  ? value.toExponential(6) 
-                  : value.toFixed(6)) 
-                : value} ${xUnit}`, 
-              valueName
-            ]}
+            formatter={customFormatter}
             labelFormatter={(label: any) => `Depth: ${label} m`}
           />
           <Legend content={() => <PileIcon />} />
@@ -86,11 +101,37 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             strokeDasharray="3 3"
             label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
           />
+          
+          {/* Add reference line at x=0 to represent undeflected pile position */}
+          {showUndeflectedPile && (
+            <ReferenceLine
+              x={0}
+              stroke="#888"
+              strokeWidth={1.5}
+              label={{ value: 'Undeflected', position: 'insideTopRight', fontSize: 10 }}
+            />
+          )}
+          
+          {/* Add undeflected pile line if provided */}
+          {showUndeflectedPile && undeflectedPoints.length > 0 && (
+            <Line 
+              data={undeflectedPoints}
+              type="monotone" 
+              dataKey="value" 
+              name="Original Position" 
+              stroke="#888" 
+              strokeWidth={1.5}
+              strokeDasharray="5 5"
+              dot={false} 
+            />
+          )}
+          
           <Line 
             type="monotone" 
             dataKey="value" 
             name={valueName} 
             stroke={color} 
+            strokeWidth={2}
             dot={false} 
             activeDot={{ r: 6 }}
           />
