@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { RectangleVertical } from 'lucide-react';
@@ -16,15 +15,11 @@ interface PileResponseChartProps {
   valueName: string;
   color: string;
   pileLength: number;
-  // Add optional prop for custom domain
   xAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
-  // Add props for undeflected pile visualization
   showUndeflectedPile?: boolean;
   undeflectedPoints?: DataPoint[];
   scaleFactor?: number;
-  // Add prop for horizontal layout (deflection-specific)
   horizontalLayout?: boolean;
-  // Add prop for y-axis orientation
   invertYAxis?: boolean;
 }
 
@@ -35,7 +30,6 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   valueName,
   color,
   pileLength,
-  // Default to dataMin/dataMax if not provided
   xAxisDomain = ['dataMin', 'dataMax'],
   showUndeflectedPile = false,
   undeflectedPoints = [],
@@ -43,11 +37,9 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   horizontalLayout = false,
   invertYAxis = true
 }) => {
-  // Set the Y-axis domain to show from ground level (0) to the pile length
-  const minDepth = 0;
-  const maxDepth = pileLength > 0 ? pileLength : Math.max(...data.map(p => p.depth));
+  const minDepth = -0.5;
+  const maxDepth = pileLength > 0 ? pileLength * 1.1 : Math.max(...data.map(p => p.depth)) * 1.1;
 
-  // Custom Pile Icon component to show in the legend
   const PileIcon = () => (
     <div className="flex items-center">
       <RectangleVertical className="w-4 h-4 mr-1" />
@@ -55,16 +47,12 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
     </div>
   );
 
-  // Custom tooltip formatter to show original values when scaled
   const customFormatter = (value: number, name: string, props: any) => {
     if (props.payload.originalValue !== undefined) {
-      // If we have an original value (for scaled deflection), show that
-      // Convert from meters to mm for display
       const displayValue = props.payload.originalValue * 1000;
       return [`${displayValue.toFixed(2)} ${xUnit}`, valueName];
     }
     
-    // For non-scaled values, format as before
     if (Math.abs(value) < 0.001) {
       return [`${value.toExponential(4)} ${xUnit}`, name];
     }
@@ -72,46 +60,39 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
   };
 
   if (horizontalLayout) {
-    // This creates a layout similar to the reference image with depth on y-axis and deflection on x-axis
     return (
-      <div className="h-80 py-4">
+      <div className="h-96 py-4">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            layout="vertical" // Key change for horizontal layout
+            layout="vertical"
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               type="number"
               domain={xAxisDomain}
               label={{ value: `${xLabel} (${xUnit})${scaleFactor > 1 ? ` (scaled ${scaleFactor.toFixed(1)}x)` : ''}`, position: 'insideBottom', offset: -5 }}
-              // Add tickFormatter for better readability of small values
               tickFormatter={(value) => {
-                // Display values in mm for readability
                 const displayValue = value * (xUnit === 'mm' ? 1 : 1000);
-                // Use exponential notation for very small numbers
                 if (Math.abs(displayValue) < 0.001) {
                   return displayValue.toExponential(2);
                 }
                 return displayValue.toFixed(Math.abs(displayValue) < 0.1 ? 2 : 1);
               }}
-              // Ensure the chart doesn't display values outside the axis domain
               allowDataOverflow={false}
             />
             <YAxis 
               dataKey="depth"
               type="number"
-              reversed={invertYAxis} // Use the invertYAxis prop to control orientation
+              reversed={invertYAxis}
               domain={[minDepth, maxDepth]}
               label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft' }}
-              // Ensure the chart doesn't display values outside the axis domain
               allowDataOverflow={false}
             />
             <Tooltip 
               formatter={customFormatter}
               labelFormatter={(label: any) => `Depth: ${label} m`}
-              // Keep tooltips within the chart area
               coordinate={{ x: 0, y: 0 }}
               cursor={{ stroke: '#ccc', strokeWidth: 1 }}
             />
@@ -123,7 +104,6 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
               label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
             />
             
-            {/* Add reference line at x=0 to represent undeflected pile position */}
             {showUndeflectedPile && (
               <ReferenceLine
                 x={0}
@@ -133,31 +113,31 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
               />
             )}
             
-            {/* Add undeflected pile line if provided */}
             {showUndeflectedPile && undeflectedPoints.length > 0 && (
               <Line 
                 data={undeflectedPoints}
-                type="monotone" 
-                dataKey="value" 
-                name="Original Position" 
-                stroke="#888" 
+                type="monotone"
+                dataKey="value"
+                name="Original Position"
+                stroke="#888"
                 strokeWidth={1.5}
                 strokeDasharray="5 5"
                 dot={false}
                 isAnimationActive={false}
+                connectNulls
               />
             )}
             
             <Line 
-              type="monotone" 
-              dataKey="value" 
-              name={valueName} 
-              stroke={color} 
+              type="monotone"
+              dataKey="value"
+              name={valueName}
+              stroke={color}
               strokeWidth={2}
-              dot={{ r: 4 }}
+              dot={false}
               activeDot={{ r: 6 }}
               isAnimationActive={false}
-              connectNulls={true}
+              connectNulls
             />
           </LineChart>
         </ResponsiveContainer>
@@ -165,9 +145,8 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
     );
   }
 
-  // Original vertical layout for other charts (bending moment, shear force)
   return (
-    <div className="h-80 py-4">
+    <div className="h-96 py-4">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
@@ -179,9 +158,7 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             type="number"
             domain={xAxisDomain}
             label={{ value: `${xLabel} (${xUnit})${scaleFactor > 1 ? ` (scaled ${scaleFactor.toFixed(1)}x)` : ''}`, position: 'insideBottom', offset: -5 }}
-            // Add tickFormatter for better readability of small values
             tickFormatter={(value) => {
-              // Use exponential notation for very small numbers
               if (Math.abs(value) < 0.001) {
                 return value.toExponential(2);
               }
@@ -205,7 +182,6 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             label={{ value: 'Pile Tip', position: 'insideBottomRight' }}
           />
           
-          {/* Add reference line at x=0 to represent undeflected pile position */}
           {showUndeflectedPile && (
             <ReferenceLine
               x={0}
@@ -215,27 +191,26 @@ const PileResponseChart: React.FC<PileResponseChartProps> = ({
             />
           )}
           
-          {/* Add undeflected pile line if provided */}
           {showUndeflectedPile && undeflectedPoints.length > 0 && (
             <Line 
               data={undeflectedPoints}
-              type="monotone" 
-              dataKey="value" 
-              name="Original Position" 
-              stroke="#888" 
+              type="monotone"
+              dataKey="value"
+              name="Original Position"
+              stroke="#888"
               strokeWidth={1.5}
               strokeDasharray="5 5"
-              dot={false} 
+              dot={false}
             />
           )}
           
           <Line 
-            type="monotone" 
-            dataKey="value" 
-            name={valueName} 
-            stroke={color} 
+            type="monotone"
+            dataKey="value"
+            name={valueName}
+            stroke={color}
             strokeWidth={2}
-            dot={false} 
+            dot={false}
             activeDot={{ r: 6 }}
           />
         </LineChart>
