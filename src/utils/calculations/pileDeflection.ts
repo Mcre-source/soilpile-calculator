@@ -1,4 +1,3 @@
-
 // Calculate pile deflection, bending moment, and shear force
 export const calculatePileDeflection = (
   soilLayers: any[],
@@ -192,6 +191,7 @@ export const calculatePileDeflection = (
       deflection *= Math.pow(stiffnessRatio, 0.25);
       
       // Adjust for water table (softer response if below water table)
+      const isUnderWater = waterTableDepth < 0 || depthFromGround > waterTableDepth;
       if (isUnderWater) {
         deflection *= 1.2;
       }
