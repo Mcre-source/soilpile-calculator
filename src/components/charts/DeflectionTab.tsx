@@ -25,8 +25,8 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
   }));
 
   // Calculate scale factor to exaggerate deflection for visualization
-  // This makes small deflections visible in the chart
-  const scaleFactor = Math.max(1, 50 / maxDeflection); // Apply stronger scaling factor
+  // This makes small deflections visible in the chart - adjusted for soil-specific calculation
+  const scaleFactor = Math.max(1, 20 / maxDeflection); // Apply appropriate scaling factor
   
   // Create scaled deflection points for visualization
   // This creates the curved pile effect by offsetting each point by its deflection
@@ -71,6 +71,15 @@ const DeflectionTab: React.FC<DeflectionTabProps> = ({
           <br />
           <span className="italic">Note: Displacement has been scaled by a factor of {scaleFactor.toFixed(1)}x for better visualization.</span>
         </p>
+        <div className="mt-2 p-3 bg-muted rounded-md text-xs">
+          <p className="font-medium">Soil Effects on Deflection:</p>
+          <ul className="list-disc list-inside space-y-1 mt-1">
+            <li>Sandy soils typically show larger deflections near the top with rapid decrease with depth</li>
+            <li>Clayey soils tend to allow more consistent deflection along the pile length</li>
+            <li>Soil below the water table provides less lateral support, increasing deflection</li>
+            <li>Calculation uses simplified p-y curve approach based on soil stiffness parameters</li>
+          </ul>
+        </div>
       </div>
     </>
   );

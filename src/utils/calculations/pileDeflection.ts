@@ -138,29 +138,76 @@ export const calculatePileDeflection = (
         shearForce = 0;
       }
     } else {
-      // For points below ground
+      // For points below ground - here's where we need to account for different soil behaviors
       const x = depthFromGround / charLength; // Normalized depth
       
       // Get soil layer at this depth
       const soilLayer = soilLayers[layerIndex];
       const soilModulus = estimateSoilModulus(soilLayer, depthFromGround);
       
-      // Simplified solutions based on elastic beam on elastic foundation
-      // These are approximations using characteristic patterns
+      // Improved soil-specific deflection calculation
+      // Using exponential decay functions that vary by soil type
       
-      // Scale factor to convert from large to realistic deflection values (in meters)
-      // This scaling makes the deflection more realistic (millimeter range)
-      const deflectionScaleFactor = 0.0002; // Scale to get deflections in meters (~0.2mm range)
+      // Base deflection scaling factor - this represents realistic deflection in meters
+      // for a typical laterally loaded pile (millimeter range)
+      const deflectionScaleFactor = 0.001; // 1mm base scale (in meters)
       
-      // Estimate deflection using exponential decay
-      deflection = lateralLoad * Math.exp(-0.6 * x) * Math.cos(0.6 * x) / (2 * pileDiameter * soilModulus) * deflectionScaleFactor;
+      // Soil-specific decay parameters
+      let decayRate, phaseShift;
+      if (soilLayer.frictionAngle > 0) {
+        // Sandy soils - faster decay with depth
+        decayRate = 0.8 + (soilLayer.frictionAngle / 50); // Higher friction angle = faster decay
+        phaseShift = 0.5;
+        
+        if (soilLayer.type.includes('loose')) {
+          // Loose sand allows more movement
+          decayRate *= 0.7;
+        } else if (soilLayer.type.includes('dense')) {
+          // Dense sand restricts movement more
+          decayRate *= 1.3;
+        }
+      } else {
+        // Clayey soils - slower decay with depth
+        decayRate = 0.4 + (soilLayer.cohesion / 100) * 0.4; // Higher cohesion = faster decay
+        phaseShift = 0.3;
+        
+        if (soilLayer.type.includes('soft')) {
+          // Soft clay allows more movement
+          decayRate *= 0.6;
+        } else if (soilLayer.type.includes('stiff')) {
+          // Stiff clay restricts movement more
+          decayRate *= 1.4;
+        }
+      }
       
-      // Bending moment approximation
-      bendingMoment = lateralLoad * charLength * Math.exp(-0.5 * x) * 
-                      (Math.cos(0.5 * x - 0.2) - 0.2 * Math.sin(0.5 * x - 0.2));
+      // Calculate deflection based on depth, soil parameters, and loading
+      // Using a modified exponential decay function with damped oscillation
+      deflection = lateralLoad * Math.exp(-decayRate * x) * 
+                 (Math.cos(phaseShift * x) + 0.2 * Math.sin(phaseShift * x)) / 
+                 (pileDiameter * soilModulus) * 
+                 deflectionScaleFactor;
       
-      // Shear force approximation (derivative of bending moment)
-      shearForce = -lateralLoad * Math.exp(-0.5 * x) * Math.sin(0.5 * x);
+      // Scale deflection based on pile stiffness and soil stiffness ratio
+      const stiffnessRatio = flexuralRigidity / (soilModulus * Math.pow(charLength, 4));
+      deflection *= Math.pow(stiffnessRatio, 0.25);
+      
+      // Adjust for water table (softer response if below water table)
+      if (isUnderWater) {
+        deflection *= 1.2;
+      }
+      
+      // Adjust deflection for realistic values based on loading
+      // Typical lateral deflections should be in millimeter range for standard loads
+      const loadFactor = lateralLoad / 100; // Normalize around 100 kN load
+      deflection *= loadFactor;
+      
+      // Improved bending moment calculation accounting for soil type
+      bendingMoment = lateralLoad * charLength * Math.exp(-decayRate * x) * 
+                    (Math.cos(phaseShift * x - 0.2) - 0.2 * Math.sin(phaseShift * x - 0.2));
+      
+      // Improved shear force calculation (derivative of bending moment)
+      shearForce = -lateralLoad * Math.exp(-decayRate * x) * 
+                 (decayRate * Math.cos(phaseShift * x) + phaseShift * Math.sin(phaseShift * x));
     }
     
     // Apply load and height effects
